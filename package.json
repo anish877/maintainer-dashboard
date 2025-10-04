@@ -9,6 +9,7 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@ai-sdk/openai": "^2.0.42",
     "@auth/prisma-adapter": "^2.10.0",
     "@headlessui/react": "^2.2.0",
     "@prisma/client": "^6.16.3",
@@ -16,6 +17,7 @@
     "@types/node": "^22.13.0",
     "@types/react": "19.0.8",
     "@types/react-dom": "19.0.3",
+    "ai": "^5.0.59",
     "chart.js": "^4.4.7",
     "chartjs-adapter-moment": "^1.0.1",
     "clsx": "^2.1.1",
