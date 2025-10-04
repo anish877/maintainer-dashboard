@@ -25,7 +25,13 @@ export const authOptions: NextAuthOptions = {
       clientSecret: process.env.GITHUB_SECRET!,
       authorization: {
         params: {
-          scope: "read:user user:email repo",
+          scope: "read:user user:email repo read:org public_repo",
+        },
+      },
+      token: {
+        async request({ client, params, checks, provider }) {
+          const tokens = await client.oauthCallback(provider.callbackUrl, params, checks)
+          return { tokens }
         },
       },
     }),

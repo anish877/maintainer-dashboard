@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import { validateGitHubToken } from '@/lib/github-token-utils'
 
 interface GitHubStats {
   totalRepos: number
@@ -36,6 +37,15 @@ export async function GET(request: NextRequest) {
 
     if (!user?.accessToken) {
       return NextResponse.json({ error: 'GitHub access token not found' }, { status: 400 })
+    }
+
+    // Validate the GitHub token
+    const tokenValidation = await validateGitHubToken(user.accessToken)
+    if (!tokenValidation.isValid) {
+      return NextResponse.json({ 
+        error: tokenValidation.error || 'Invalid GitHub token',
+        needsReauth: tokenValidation.needsReauth 
+      }, { status: 401 })
     }
 
     // Ensure username is available - fetch from GitHub if not in DB
@@ -84,7 +94,18 @@ export async function GET(request: NextRequest) {
     })
 
     if (!reposResponse.ok) {
-      throw new Error(`GitHub API error: ${reposResponse.status}`)
+      const errorText = await reposResponse.text()
+      console.error('GitHub API error:', {
+        status: reposResponse.status,
+        statusText: reposResponse.statusText,
+        error: errorText
+      })
+      
+      if (reposResponse.status === 403) {
+        throw new Error('GitHub API access forbidden. Please re-authenticate with GitHub to refresh your permissions.')
+      }
+      
+      throw new Error(`GitHub API error: ${reposResponse.status} - ${reposResponse.statusText}`)
     }
 
     const repos = await reposResponse.json()
