@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { Octokit } from '@octokit/rest'
 import { prisma } from '@/lib/prisma'
+import { AIAnalysisService } from '@/lib/services/ai-analysis-service'
 
 // Repository-specific assignments API
 export async function GET(
@@ -108,25 +109,59 @@ export async function GET(
             ? lastCommentTime 
             : issueUpdateTime
 
-          // Simple AI analysis based on comment content
+          // AI analysis of recent comments
           const recentComments = comments
             .filter(comment => comment.user?.login === assignee.login)
             .slice(-3)
             .map(comment => comment.body)
 
-          const combinedComments = recentComments.join(' ').toLowerCase()
-          
-          // Basic AI analysis
-          const aiAnalysis = {
-            isActive: combinedComments.includes('working') || combinedComments.includes('progress') || combinedComments.includes('done'),
-            workType: combinedComments.includes('code') || combinedComments.includes('implement') ? 'coding' :
-                     combinedComments.includes('research') || combinedComments.includes('investigate') ? 'research' :
-                     combinedComments.includes('plan') || combinedComments.includes('design') ? 'planning' : 'unknown',
-            confidence: Math.min(0.9, 0.3 + (recentComments.length * 0.2)),
-            isBlocked: combinedComments.includes('blocked') || combinedComments.includes('stuck') || combinedComments.includes('help'),
-            nextSteps: recentComments.length > 0 ? 
-              `Last comment: ${recentComments[recentComments.length - 1]?.substring(0, 100)}...` : 
-              'No recent activity'
+          let aiAnalysis = {
+            isActive: false,
+            workType: 'unknown',
+            confidence: 0,
+            isBlocked: false,
+            nextSteps: 'No recent activity'
+          }
+
+          // Use AI analysis if we have comments
+          if (recentComments.length > 0) {
+            try {
+              const aiService = new AIAnalysisService()
+              const combinedText = recentComments.join('\n\n')
+              
+              console.log(`🤖 Analyzing comments for ${assignee.login} in issue #${issue.number}`)
+              
+              const analysis = await aiService.analyzeWorkProgress(combinedText)
+              
+              aiAnalysis = {
+                isActive: analysis.hasWork,
+                workType: analysis.workType,
+                confidence: analysis.confidence,
+                isBlocked: analysis.isBlocked,
+                nextSteps: analysis.nextSteps || `Last comment: ${recentComments[recentComments.length - 1]?.substring(0, 100)}...`
+              }
+              
+              console.log(`✅ AI Analysis result:`, {
+                isActive: aiAnalysis.isActive,
+                workType: aiAnalysis.workType,
+                confidence: Math.round(aiAnalysis.confidence * 100) + '%',
+                isBlocked: aiAnalysis.isBlocked
+              })
+            } catch (error) {
+              console.error('AI analysis failed, using fallback:', error)
+              
+              // Fallback to basic analysis
+              const combinedComments = recentComments.join(' ').toLowerCase()
+              aiAnalysis = {
+                isActive: combinedComments.includes('working') || combinedComments.includes('progress') || combinedComments.includes('done'),
+                workType: combinedComments.includes('code') || combinedComments.includes('implement') ? 'coding' :
+                         combinedComments.includes('research') || combinedComments.includes('investigate') ? 'research' :
+                         combinedComments.includes('plan') || combinedComments.includes('design') ? 'planning' : 'unknown',
+                confidence: Math.min(0.9, 0.3 + (recentComments.length * 0.2)),
+                isBlocked: combinedComments.includes('blocked') || combinedComments.includes('stuck') || combinedComments.includes('help'),
+                nextSteps: `Last comment: ${recentComments[recentComments.length - 1]?.substring(0, 100)}...`
+              }
+            }
           }
 
           return {
