@@ -1,7 +1,19 @@
 import { NextResponse } from 'next/server';
-import { RedditScraper, DEFAULT_REDDIT_CONFIG } from '@/lib/scrapers/reddit-scraper';
-import { TwitterScraper, DEFAULT_TWITTER_CONFIG } from '@/lib/scrapers/twitter-scraper';
-import { StackOverflowScraper, DEFAULT_STACKOVERFLOW_CONFIG } from '@/lib/scrapers/stackoverflow-scraper';
+import { RedditScraper } from '@/lib/scrapers/reddit-scraper';
+import { StackOverflowScraper } from '@/lib/scrapers/stackoverflow-scraper';
+
+// Default configurations
+const DEFAULT_REDDIT_CONFIG = {
+  subreddits: ['javascript', 'reactjs', 'nodejs', 'webdev'],
+  searchTerms: ['bug', 'issue', 'error', 'problem', 'help'],
+  maxPostsPerSubreddit: 10
+};
+
+const DEFAULT_STACKOVERFLOW_CONFIG = {
+  tags: ['javascript', 'reactjs', 'nodejs'],
+  searchTerms: ['bug', 'error', 'issue'],
+  maxQuestions: 20
+};
 import { processNewPosts } from '@/lib/ai/classifier';
 
 export async function GET(request: Request) {
@@ -37,17 +49,19 @@ export async function GET(request: Request) {
       console.error('❌ Reddit scraping failed:', error);
     }
     
-    // Run Twitter scraper
-    try {
-      console.log('🐦 Scraping Twitter...');
-      const twitterScraper = new TwitterScraper(DEFAULT_TWITTER_CONFIG);
-      await twitterScraper.scrape();
-      results.twitter.success = true;
-      console.log('✅ Twitter scraping completed');
-    } catch (error) {
-      results.twitter.error = error instanceof Error ? error.message : 'Unknown error';
-      console.error('❌ Twitter scraping failed:', error);
-    }
+    // Run Twitter scraper - disabled for now
+    // try {
+    //   console.log('🐦 Scraping Twitter...');
+    //   const twitterScraper = new TwitterScraper(DEFAULT_TWITTER_CONFIG);
+    //   await twitterScraper.scrape();
+    //   results.twitter.success = true;
+    //   console.log('✅ Twitter scraping completed');
+    // } catch (error) {
+    //   results.twitter.error = error instanceof Error ? error.message : 'Unknown error';
+    //   console.error('❌ Twitter scraping failed:', error);
+    // }
+    results.twitter.success = true;
+    console.log('⚠️ Twitter scraping disabled');
     
     // Run Stack Overflow scraper
     try {

@@ -28,12 +28,14 @@ export function useGitHubRepos() {
   const [repos, setRepos] = useState<GitHubRepo[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [loadingMessage, setLoadingMessage] = useState('Loading repositories...')
 
   useEffect(() => {
     const fetchRepos = async () => {
       try {
         setLoading(true)
         setError(null)
+        setLoadingMessage('Fetching repositories from GitHub...')
 
         const response = await fetch('/api/github/repos')
         
@@ -41,8 +43,13 @@ export function useGitHubRepos() {
           throw new Error('Failed to fetch repositories')
         }
 
+        setLoadingMessage('Processing and syncing repositories...')
         const data = await response.json()
         setRepos(data.repos || [])
+        
+        if (data.note) {
+          setLoadingMessage(data.note)
+        }
       } catch (err) {
         console.error('Error fetching repositories:', err)
         setError(err instanceof Error ? err.message : 'Failed to fetch repositories')
@@ -81,6 +88,7 @@ export function useGitHubRepos() {
     repos,
     loading,
     error,
+    loadingMessage,
     refetch
   }
 }

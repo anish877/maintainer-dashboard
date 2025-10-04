@@ -3,15 +3,22 @@ import { prisma } from '@/lib/prisma';
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const issue = await prisma.processedIssue.findUnique({
-      where: { id: params.id },
-      include: {
-        scrapedPost: true
-      }
+    const resolvedParams = await params;
+    
+    // Try to find in pending comments first
+    let issue = await prisma.pendingComment.findUnique({
+      where: { id: resolvedParams.id }
     });
+
+    // If not found, try completeness analysis
+    if (!issue) {
+      issue = await prisma.completenessAnalysis.findUnique({
+        where: { id: resolvedParams.id }
+      });
+    }
 
     if (!issue) {
       return NextResponse.json(
@@ -33,81 +40,65 @@ export async function GET(
 
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const resolvedParams = await params;
     const body = await request.json();
     
-    // Handle status-only updates (from approve/reject buttons)
+    // Handle status updates for pending comments
     if (body.status && Object.keys(body).length === 1) {
-      if (!['pending', 'approved', 'rejected', 'duplicate'].includes(body.status)) {
+      if (!['PENDING', 'APPROVED', 'REJECTED', 'POSTED', 'FAILED', 'EXPIRED'].includes(body.status)) {
         return NextResponse.json(
           { error: 'Invalid status' },
           { status: 400 }
         );
       }
 
-      const updatedIssue = await prisma.processedIssue.update({
-        where: { id: params.id },
+      const updatedComment = await prisma.pendingComment.update({
+        where: { id: resolvedParams.id },
         data: { 
           status: body.status,
-          reviewedAt: new Date(),
-          reviewedBy: 'admin' // TODO: Get from session
-        },
-        include: {
-          scrapedPost: true
+          approvedAt: body.status === 'APPROVED' ? new Date() : null,
+          approvedBy: body.status === 'APPROVED' ? 'admin' : null, // TODO: Get from session
+          rejectedAt: body.status === 'REJECTED' ? new Date() : null,
+          rejectedBy: body.status === 'REJECTED' ? 'admin' : null
         }
       });
 
       return NextResponse.json({ 
-        message: 'Issue status updated successfully',
-        issue: updatedIssue
+        message: 'Comment status updated successfully',
+        comment: updatedComment
       });
     }
 
-    // Handle full issue editing (from edit form)
-    const {
-      summary,
-      severity,
-      type,
-      suggestedLabels,
-      affectedArea,
-      technicalDetails
-    } = body;
+    // Handle comment editing
+    const { finalComment } = body;
 
-    if (!summary || !severity || !type) {
+    if (!finalComment) {
       return NextResponse.json(
-        { error: 'Missing required fields' },
+        { error: 'Missing comment content' },
         { status: 400 }
       );
     }
 
-    const updatedIssue = await prisma.processedIssue.update({
-      where: { id: params.id },
+    const updatedComment = await prisma.pendingComment.update({
+      where: { id: resolvedParams.id },
       data: {
-        summary,
-        severity,
-        type,
-        suggestedLabels: suggestedLabels || [],
-        affectedArea,
-        technicalDetails,
-        reviewedAt: new Date(),
-        reviewedBy: 'admin' // TODO: Get from session
-      },
-      include: {
-        scrapedPost: true
+        finalComment,
+        updatedAt: new Date()
       }
     });
 
     return NextResponse.json({ 
-      message: 'Issue updated successfully',
-      issue: updatedIssue
+      message: 'Comment updated successfully',
+      comment: updatedComment
     });
 
   } catch (error) {
-    console.error('Error updating issue:', error);
+    console.error('Error updating comment:', error);
     return NextResponse.json(
-      { error: 'Failed to update issue' },
+      { error: 'Failed to update comment' },
       { status: 500 }
     );
   }

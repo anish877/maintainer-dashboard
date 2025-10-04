@@ -52,7 +52,8 @@ model User {
   teamMembers   TeamMember[]
   notifications UserNotification[]
   activities    ActivityLog[]
-  
+  createdTemplates CompletenessTemplate[] @relation("TemplateCreator")
+
   @@index([githubId])
   @@index([username])
 }
@@ -140,7 +141,11 @@ model Repository {
   contributors    Contributor[]
   scraperSources  ScraperSource[]
   analytics       RepositoryAnalytics[]
-  
+  completenessTemplates     CompletenessTemplate[] @relation("CompletenessTemplates")
+  pendingComments           PendingComment[] @relation("PendingComments")
+  completenessAnalyses      CompletenessAnalysis[] @relation("CompletenessAnalyses")
+  completenessMetrics       CompletenessMetrics[] @relation("CompletenessMetrics")
+
   @@index([githubId])
   @@index([fullName])
   @@index([ownerId])
@@ -861,4 +866,181 @@ model ActivityLog {
   
   @@index([userId, createdAt])
   @@index([entityType, entityId])
+}
+
+// ================================
+// ISSUE COMPLETENESS CHECKER
+// ================================
+
+model CompletenessTemplate {
+  id              String   @id @default(cuid())
+  name            String
+  description     String?
+  category        TemplateCategory
+  template        Json     // Rich template structure with variables
+  variables       Json     // Available template variables
+  styling         Json     // UI styling preferences
+  isActive        Boolean  @default(true)
+  isDefault       Boolean  @default(false)
+  
+  // Approval settings
+  requiresApproval Boolean @default(true)
+  autoApply       Boolean  @default(false)
+  
+  // Usage tracking
+  usageCount      Int      @default(0)
+  lastUsed        DateTime?
+  
+  // Template conditions
+  conditions      Json?    // When to apply this template
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  // Relations
+  repositoryId    String?
+  repository      Repository? @relation("CompletenessTemplates", fields: [repositoryId], references: [id])
+  createdById     String
+  createdBy       User     @relation("TemplateCreator", fields: [createdById], references: [id])
+  
+  pendingComments PendingComment[]
+  
+  @@index([repositoryId, isActive])
+  @@index([createdById])
+}
+
+model PendingComment {
+  id              String   @id @default(cuid())
+  
+  // Issue information
+  issueNumber     Int
+  issueTitle      String
+  issueUrl        String
+  issueAuthor     String
+  issueBody       String?  @db.Text
+  
+  // Completeness analysis
+  completenessAnalysis Json
+  qualityScore    Float
+  missingElements Json
+  
+  // Template and comment
+  templateId      String
+  template        CompletenessTemplate @relation(fields: [templateId], references: [id])
+  generatedComment String   @db.Text
+  finalComment    String?   @db.Text
+  
+  // Approval workflow
+  status          ApprovalStatus @default(PENDING)
+  approvedBy      String?
+  approvedAt      DateTime?
+  rejectedBy      String?
+  rejectedAt      DateTime?
+  rejectionReason String?   @db.Text
+  
+  // GitHub integration
+  githubCommentId Int?      @unique
+  postedAt        DateTime?
+  
+  // Analysis metadata
+  analysisConfidence Float @default(0)
+  analysisVersion   String @default("v1")
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  // Relations
+  repositoryId    String
+  repository      Repository @relation("PendingComments", fields: [repositoryId], references: [id])
+  
+  @@index([status, createdAt])
+  @@index([repositoryId, status])
+  @@index([issueNumber])
+}
+
+model CompletenessAnalysis {
+  id              String   @id @default(cuid())
+  
+  // Analysis results
+  issueNumber     Int
+  overallScore    Float    // 0-100
+  reproductionSteps Json
+  expectedBehavior Json
+  versionInfo     Json
+  environmentDetails Json
+  errorLogs       Json
+  screenshots     Json
+  
+  // Analysis metadata
+  analysisVersion String   @default("v1")
+  confidence      Float    @default(0)
+  processingTime  Int?     // milliseconds
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  // Relations
+  repositoryId    String
+  repository      Repository @relation("CompletenessAnalyses", fields: [repositoryId], references: [id])
+  
+  @@unique([repositoryId, issueNumber])
+  @@index([repositoryId, overallScore])
+}
+
+model CompletenessMetrics {
+  id              String   @id @default(cuid())
+  date            DateTime @default(now()) @db.Date
+  
+  // Repository metrics
+  totalIssues     Int      @default(0)
+  analyzedIssues  Int      @default(0)
+  completeIssues  Int      @default(0)
+  incompleteIssues Int     @default(0)
+  
+  // Quality metrics
+  averageScore    Float    @default(0)
+  medianScore     Float    @default(0)
+  highQualityCount Int     @default(0) // score >= 80
+  lowQualityCount  Int     @default(0) // score < 40
+  
+  // Completeness breakdown
+  reproductionStepsPresent Int @default(0)
+  expectedBehaviorPresent Int @default(0)
+  versionInfoPresent      Int @default(0)
+  environmentDetailsPresent Int @default(0)
+  errorLogsPresent        Int @default(0)
+  screenshotsPresent      Int @default(0)
+  
+  // Template usage
+  templatesUsed   Int      @default(0)
+  commentsPosted  Int      @default(0)
+  approvalsPending Int     @default(0)
+  
+  createdAt       DateTime @default(now())
+  
+  // Relations
+  repositoryId    String
+  repository      Repository @relation("CompletenessMetrics", fields: [repositoryId], references: [id])
+  
+  @@unique([repositoryId, date])
+  @@index([repositoryId, date])
+}
+
+enum ApprovalStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  POSTED
+  FAILED
+  EXPIRED
+}
+
+enum TemplateCategory {
+  BUG_REPORT
+  FEATURE_REQUEST
+  QUESTION
+  DOCUMENTATION
+  PERFORMANCE_ISSUE
+  SECURITY_ISSUE
+  CUSTOM
 }
