@@ -1,10 +1,17 @@
 import { AIClient } from '@/lib/ai-client'
 
 export class AIAnalysisService {
-  private aiClient: AIClient
+  private _aiClient: AIClient | null = null
 
   constructor() {
-    this.aiClient = new AIClient()
+    // Lazy initialization - don't create AIClient during build
+  }
+
+  private get aiClient(): AIClient {
+    if (!this._aiClient) {
+      this._aiClient = new AIClient()
+    }
+    return this._aiClient
   }
 
   async analyzeComment(commentBody: string) {
