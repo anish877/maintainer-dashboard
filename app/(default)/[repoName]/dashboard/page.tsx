@@ -119,6 +119,12 @@ export default function RepoDashboard() {
           >
             🔍 Duplicate Detection
           </button>
+          <button
+            onClick={() => router.push(`/${repoName}/spam`)}
+            className="inline-flex items-center gap-2 bg-red-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-red-700 transition-colors"
+          >
+            🛡️ Spam Detection
+          </button>
           <a
             href={repo.html_url}
             target="_blank"
@@ -292,6 +298,15 @@ export default function RepoDashboard() {
               <span className="text-lg">🔍</span>
               <span className="text-sm font-medium text-purple-800 dark:text-purple-200">
                 Duplicate Detection
+              </span>
+            </button>
+            <button
+              onClick={() => router.push(`/${repoName}/spam`)}
+              className="flex items-center gap-3 p-3 rounded-lg bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors w-full text-left"
+            >
+              <span className="text-lg">🛡️</span>
+              <span className="text-sm font-medium text-red-800 dark:text-red-200">
+                Spam Detection
               </span>
             </button>
             <a

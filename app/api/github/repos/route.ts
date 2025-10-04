@@ -26,12 +26,13 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'GitHub access token not found' }, { status: 400 })
     }
 
-    // Fetch all repositories from GitHub API with pagination
+    // Fetch repositories from GitHub API with pagination (optimized for faster loading)
     let allRepos: any[] = []
     let page = 1
-    const perPage = 100
+    const perPage = 30 // Reduced from 100 to 30 for faster loading
+    const maxPages = 5 // Limit to first 5 pages (150 repos max) for faster loading
     
-    while (true) {
+    while (page <= maxPages) {
       const githubResponse = await fetch(`https://api.github.com/user/repos?sort=updated&per_page=${perPage}&page=${page}`, {
         headers: {
           'Authorization': `Bearer ${user.accessToken}`,
@@ -59,11 +60,6 @@ export async function GET(request: NextRequest) {
       }
       
       page++
-      
-      // Safety limit to prevent infinite loops (max 50 pages = 5000 repos)
-      if (page > 50) {
-        break
-      }
     }
 
     const githubRepos = allRepos
@@ -91,7 +87,53 @@ export async function GET(request: NextRequest) {
       fork: repo.fork
     }))
 
-    return NextResponse.json({ repos })
+    // Save repositories to database
+    const savedRepos = []
+    for (const repo of repos) {
+      try {
+        const savedRepo = await prisma.repository.upsert({
+          where: { githubId: repo.id },
+          update: {
+            name: repo.name,
+            fullName: repo.fullName,
+            description: repo.description,
+            owner: repo.owner,
+            stars: repo.stars,
+            language: repo.language,
+            isPrivate: repo.visibility === 'Private',
+            defaultBranch: repo.defaultBranch,
+            forks: repo.forks,
+            lastSyncedAt: new Date()
+          },
+          create: {
+            githubId: repo.id,
+            name: repo.name,
+            fullName: repo.fullName,
+            description: repo.description,
+            owner: repo.owner,
+            stars: repo.stars,
+            language: repo.language,
+            isPrivate: repo.visibility === 'Private',
+            defaultBranch: repo.defaultBranch,
+            forks: repo.forks,
+            ownerId: session.user.id,
+            lastSyncedAt: new Date()
+          }
+        })
+        savedRepos.push(savedRepo)
+      } catch (error) {
+        console.error(`Error saving repository ${repo.fullName}:`, error)
+        // Continue with other repositories even if one fails
+      }
+    }
+
+    return NextResponse.json({ 
+      repos,
+      savedCount: savedRepos.length,
+      totalCount: repos.length,
+      message: `Successfully synced ${savedRepos.length} repositories to database (showing most recent ${repos.length} repositories for faster loading)`,
+      note: repos.length >= 150 ? 'Showing first 150 repositories sorted by most recent updates. Use the search functionality to find specific repositories.' : null
+    })
 
   } catch (error) {
     console.error('Error fetching GitHub repositories:', error)

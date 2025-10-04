@@ -38,9 +38,15 @@ export class AIClient {
   constructor(apiKey?: string) {
     const key = apiKey || process.env.OPEN_AI_KEY
     if (!key) {
-      throw new Error('OpenAI API key is required. Set OPEN_AI_KEY environment variable or pass it to constructor.')
+      // During build time, we don't want to throw errors
+      if (process.env.NODE_ENV === 'production' && !process.env.VERCEL) {
+        throw new Error('OpenAI API key is required. Set OPEN_AI_KEY environment variable or pass it to constructor.')
+      }
+      // For build time, create a mock client
+      this.openai = null
+    } else {
+      this.openai = createOpenAI({ apiKey: key })
     }
-    this.openai = createOpenAI({ apiKey: key })
   }
 
   /**
@@ -50,6 +56,10 @@ export class AIClient {
     messages: AIMessage[],
     config: AIStreamConfig = {}
   ): Promise<AIStreamResponse> {
+    if (!this.openai) {
+      throw new Error('OpenAI API key is required. Set OPEN_AI_KEY environment variable.')
+    }
+
     const {
       model = process.env.OPENAI_MODEL || 'gpt-4o-mini',
       temperature = 0.7,
@@ -86,6 +96,10 @@ export class AIClient {
     messages: AIMessage[],
     config: AIStreamConfig = {}
   ): Promise<AIGenerateResponse> {
+    if (!this.openai) {
+      throw new Error('OpenAI API key is required. Set OPEN_AI_KEY environment variable.')
+    }
+
     const {
       model = process.env.OPENAI_MODEL || 'gpt-4o-mini',
       temperature = 0.7,
@@ -192,22 +206,30 @@ export class AIClient {
   }
 }
 
-// Export a default instance
-export const aiClient = new AIClient()
+// Export a default instance (lazy initialization)
+let _aiClient: AIClient | null = null
+export const aiClient = {
+  get instance() {
+    if (!_aiClient) {
+      _aiClient = new AIClient()
+    }
+    return _aiClient
+  }
+}
 
 // Export utility functions for direct use
 export async function streamAIResponse(
   messages: AIMessage[],
   config: AIStreamConfig = {}
 ): Promise<AIStreamResponse> {
-  return aiClient.streamText(messages, config)
+  return aiClient.instance.streamText(messages, config)
 }
 
 export async function generateAIResponse(
   messages: AIMessage[],
   config: AIStreamConfig = {}
 ): Promise<AIGenerateResponse> {
-  return aiClient.generateText(messages, config)
+  return aiClient.instance.generateText(messages, config)
 }
 
 export async function simpleChat(
@@ -215,7 +237,13 @@ export async function simpleChat(
   systemPrompt?: string,
   config: Omit<AIStreamConfig, 'systemPrompt'> = {}
 ): Promise<AIGenerateResponse> {
-  return aiClient.chat(message, systemPrompt, config)
+  return aiClient.instance.generateText(
+    [{ role: 'user', content: message }],
+    {
+      ...config,
+      systemPrompt
+    }
+  )
 }
 
 export async function streamSimpleChat(
@@ -223,5 +251,11 @@ export async function streamSimpleChat(
   systemPrompt?: string,
   config: Omit<AIStreamConfig, 'systemPrompt'> = {}
 ): Promise<AIStreamResponse> {
-  return aiClient.streamChat(message, systemPrompt, config)
+  return aiClient.instance.streamText(
+    [{ role: 'user', content: message }],
+    {
+      ...config,
+      systemPrompt
+    }
+  )
 }
