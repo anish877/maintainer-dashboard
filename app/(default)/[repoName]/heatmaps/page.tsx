@@ -461,3 +461,4 @@ export default function RepoHeatmapsPage() {
     </div>
   )
 }
+

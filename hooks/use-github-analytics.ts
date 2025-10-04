@@ -59,7 +59,7 @@ export function useGitHubAnalytics() {
         // Fetch all data in parallel, but handle individual failures
         const [statsResponse, commitsResponse, issuesResponse] = await Promise.allSettled([
           fetch('/api/github/analytics'),
-          fetch('/api/github/commits?days=30'),
+          fetch('/api/github/commits?days=5'),
           fetch('/api/github/issues')
         ])
 
@@ -126,7 +126,7 @@ export function useGitHubAnalytics() {
     try {
       const [statsResponse, commitsResponse, issuesResponse] = await Promise.all([
         fetch('/api/github/analytics'),
-        fetch('/api/github/commits?days=30'),
+        fetch('/api/github/commits?days=5'),
         fetch('/api/github/issues')
       ])
 
@@ -161,7 +161,7 @@ export function useGitHubAnalytics() {
   }
 }
 
-export function useGitHubCommits(repo?: string, days: number = 30) {
+export function useGitHubCommits(repo?: string, days: number = 5) {
   const [commits, setCommits] = useState<CommitData[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)

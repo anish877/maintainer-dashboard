@@ -147,3 +147,4 @@ export default function TimeOfDayChart({ data }: TimeOfDayChartProps) {
     </div>
   )
 }
+

@@ -66,7 +66,7 @@ export async function GET(request: NextRequest) {
 
     // Get query parameters
     const { searchParams } = new URL(request.url)
-    const days = parseInt(searchParams.get('days') || '30')
+    const days = parseInt(searchParams.get('days') || '5')
     const repo = searchParams.get('repo')
 
     let commitsData: CommitData[] = []

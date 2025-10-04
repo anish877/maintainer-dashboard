@@ -9,7 +9,7 @@ import { useGitHubCommits } from '@/hooks/use-github-analytics'
 import { adjustColorOpacity, getCssVariable } from '@/components/utils/utils'
 
 export default function DashboardCard01() {
-  const { commits, loading, error } = useGitHubCommits(undefined, 30)
+  const { commits, loading, error } = useGitHubCommits(undefined, 5)
 
   // Transform commit data for the chart
   const chartData = {
@@ -95,7 +95,7 @@ export default function DashboardCard01() {
           {/* Menu button */}
           <EditMenu align="right" />
         </header>
-        <div className="text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase mb-1">Last 30 Days</div>
+        <div className="text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase mb-1">Last 5 Days</div>
         <div className="flex items-start">
           <div className="text-3xl font-bold text-gray-800 dark:text-gray-100 mr-2">{totalCommits}</div>
           <div className={`text-sm font-medium px-1.5 rounded-full ${
