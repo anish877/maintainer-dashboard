@@ -12,11 +12,11 @@ export default function DashboardCard03() {
   const recentRepos = stats?.recentActivity?.slice(0, 4) || []
 
   const handleRepoClick = (repoName: string) => {
-    router.push(`/${repoName}/dashboard`)
+    window.open(`/${repoName}/dashboard`, '_blank')
   }
 
   const handleShowAll = () => {
-    router.push('/repos')
+    window.open('/repos', '_blank')
   }
 
   // Show error state if there's an error
@@ -67,45 +67,21 @@ export default function DashboardCard03() {
         <div className="text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase mb-3">Latest Created</div>
         
         {/* Recent Repositories List */}
-        <div className="space-y-1.5 mb-4">
+        <div className="space-y-2 mb-4">
           {recentRepos.length > 0 ? (
             recentRepos.map((repo: any, index: number) => (
-              <div
-                key={repo.id || index}
-                onClick={() => handleRepoClick(repo.name)}
-                className="flex items-center justify-between p-1.5 rounded-lg bg-gray-50 dark:bg-gray-700 hover:bg-gray-100 dark:hover:bg-gray-600 cursor-pointer transition-colors group"
-              >
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center space-x-2 mb-0">
-                    <h4 className="text-sm font-medium text-gray-800 dark:text-gray-100 truncate group-hover:text-purple-600 dark:group-hover:text-purple-400">
-                      {repo.name}
-                    </h4>
-                    {repo.private && (
-                      <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200">
-                        Private
-                      </span>
-                    )}
-                  </div>
-                  <div className="flex items-center space-x-3 text-xs text-gray-500 dark:text-gray-400">
-                    {repo.stargazers_count > 0 && (
-                      <div className="flex items-center space-x-1">
-                        <span>⭐</span>
-                        <span>{repo.stargazers_count}</span>
-                      </div>
-                    )}
-                    {repo.forks_count > 0 && (
-                      <div className="flex items-center space-x-1">
-                        <span>🍴</span>
-                        <span>{repo.forks_count}</span>
-                      </div>
-                    )}
-                    <div className="flex items-center space-x-1">
-                      <span>📅</span>
-                      <span>{new Date(repo.created_at).toLocaleDateString()}</span>
-                    </div>
-                  </div>
-                </div>
-                <span className="text-gray-400 group-hover:text-purple-500 transition-colors">🔗</span>
+              <div key={repo.id || index} className="flex items-center space-x-2">
+                <button
+                  onClick={() => handleRepoClick(repo.name)}
+                  className="text-sm font-medium text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 hover:underline transition-colors text-left"
+                >
+                  {repo.name}
+                </button>
+                {repo.private && (
+                  <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200">
+                    Private
+                  </span>
+                )}
               </div>
             ))
           ) : (
