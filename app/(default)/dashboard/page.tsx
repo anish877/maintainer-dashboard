@@ -15,6 +15,7 @@ import DashboardCard08 from './dashboard-card-08'
 import DashboardCard09 from './dashboard-card-09'
 import DashboardCard10 from './dashboard-card-10'
 import DashboardCard11 from './dashboard-card-11'
+import { AnalyticsProvider } from '@/hooks/use-analytics-context'
 
 export default function Dashboard() {
   const { data: session } = useSession()
@@ -25,7 +26,8 @@ export default function Dashboard() {
   }
   
   return (
-    <div className="px-4 sm:px-6 lg:px-8 py-8 w-full max-w-[96rem] mx-auto">
+    <AnalyticsProvider>
+      <div className="px-4 sm:px-6 lg:px-8 py-8 w-full max-w-[96rem] mx-auto">
       {/* Dashboard actions */}
       <div className="sm:flex sm:justify-between sm:items-center mb-8">
         {/* Left: Title */}
@@ -97,7 +99,8 @@ export default function Dashboard() {
         {/* Card (Income/Expenses) */}
         <DashboardCard11 />        
 
-      </div>      
-    </div>
+      </div>
+      </div>
+    </AnalyticsProvider>
   )
 }

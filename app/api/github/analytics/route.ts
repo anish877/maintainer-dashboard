@@ -20,8 +20,18 @@ interface GitHubStats {
   }>
 }
 
+// Simple in-memory cache to prevent multiple simultaneous calls
+let cache: { data: any; timestamp: number } | null = null
+const CACHE_DURATION = 5 * 60 * 1000 // 5 minutes
+
 export async function GET(request: NextRequest) {
   try {
+    // Check cache first
+    if (cache && Date.now() - cache.timestamp < CACHE_DURATION) {
+      console.log('📋 [CACHE] Returning cached analytics data')
+      return NextResponse.json({ stats: cache.data })
+    }
+
     const session = await getServerSession(authOptions)
     
     if (!session?.user?.id) {
@@ -150,57 +160,49 @@ export async function GET(request: NextRequest) {
       console.log(`🔍 [DEBUG] Fetching commits for ${repos.length} repositories since ${since}`)
       console.log(`🔍 [DEBUG] Using username: ${username}`)
       
-      // Get commits from ALL repositories (no arbitrary limits)
-      for (const repo of repos) {
+      // Limit to first 20 repos to prevent excessive API calls
+      const reposToCheck = repos.slice(0, 20)
+      console.log(`🔍 [DEBUG] Checking commits for ${reposToCheck.length} repositories (limited for performance)`)
+      
+      // Get commits from limited repositories
+      for (const repo of reposToCheck) {
         try {
-          // Fetch commits with pagination to get all commits, not just first 100
-          let repoCommits = 0
-          let page = 1
-          let hasMore = true
-          
-          while (hasMore && page <= 10) { // Limit to 10 pages to avoid infinite loops
-            const commitsResponse = await fetch(
-              `https://api.github.com/repos/${repo.full_name}/commits?since=${since}&per_page=100&page=${page}&author=${username}`, 
-              {
-                headers: {
-                  'Authorization': `Bearer ${user.accessToken}`,
-                  'Accept': 'application/vnd.github.v3+json',
-                  'User-Agent': 'GitHub-Dashboard'
-                }
+          // Only fetch first page to get approximate count
+          const commitsResponse = await fetch(
+            `https://api.github.com/repos/${repo.full_name}/commits?since=${since}&per_page=100&author=${username}`, 
+            {
+              headers: {
+                'Authorization': `Bearer ${user.accessToken}`,
+                'Accept': 'application/vnd.github.v3+json',
+                'User-Agent': 'GitHub-Dashboard'
               }
-            )
-
-            if (commitsResponse.ok) {
-              const commitsData = await commitsResponse.json()
-              repoCommits += commitsData.length
-              
-              // If we got less than 100 commits, we've reached the end
-              if (commitsData.length < 100) {
-                hasMore = false
-              } else {
-                page++
-              }
-            } else {
-              console.warn(`Failed to fetch commits from ${repo.full_name} (page ${page}):`, commitsResponse.status)
-              hasMore = false
             }
+          )
+
+          if (commitsResponse.ok) {
+            const commitsData = await commitsResponse.json()
+            totalCommits += commitsData.length
+            console.log(`📊 [DEBUG] ${repo.full_name}: ${commitsData.length} commits`)
+          } else {
+            console.warn(`Failed to fetch commits from ${repo.full_name}:`, commitsResponse.status)
           }
-          
-          totalCommits += repoCommits
-          console.log(`📊 [DEBUG] ${repo.full_name}: ${repoCommits} commits`)
         } catch (repoError) {
           console.warn(`Failed to fetch commits from ${repo.full_name}:`, repoError)
           // Continue with other repos
         }
       }
       
-      console.log(`✅ [DEBUG] Total commits across all repos: ${totalCommits}`)
+      console.log(`✅ [DEBUG] Total commits across ${reposToCheck.length} repos: ${totalCommits}`)
       stats.totalCommits = totalCommits
     } catch (error) {
       console.log('Could not fetch contribution data:', error)
       stats.totalCommits = 0
     }
 
+    // Update cache
+    cache = { data: stats, timestamp: Date.now() }
+    console.log('💾 [CACHE] Updated analytics cache')
+    
     return NextResponse.json({ stats })
 
   } catch (error) {

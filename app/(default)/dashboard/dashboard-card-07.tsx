@@ -1,9 +1,9 @@
 'use client'
 
-import { useGitHubAnalytics } from '@/hooks/use-github-analytics'
+import { useAnalytics } from '@/hooks/use-analytics-context'
 
 export default function DashboardCard07() {
-  const { stats, loading, error } = useGitHubAnalytics()
+  const { stats, loading, error } = useAnalytics()
 
   if (error) {
     return (

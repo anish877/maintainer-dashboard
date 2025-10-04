@@ -1,10 +1,10 @@
 'use client'
 
 import EditMenu from '@/components/edit-menu'
-import { useGitHubAnalytics } from '@/hooks/use-github-analytics'
+import { useAnalytics } from '@/hooks/use-analytics-context'
 
 export default function DashboardCard05() {
-  const { stats, loading } = useGitHubAnalytics()
+  const { stats, loading } = useAnalytics()
 
   if (loading) {
     return (

@@ -1,12 +1,12 @@
 'use client'
 
 import EditMenu from '@/components/edit-menu'
-import { useGitHubAnalytics } from '@/hooks/use-github-analytics'
+import { useAnalytics } from '@/hooks/use-analytics-context'
 import { useRouter } from 'next/navigation'
 import { useToastNotifications } from '@/lib/toast'
 
 export default function DashboardCard03() {
-  const { stats, loading, error } = useGitHubAnalytics()
+  const { stats, loading, error } = useAnalytics()
   const router = useRouter()
   const { success } = useToastNotifications()
 
