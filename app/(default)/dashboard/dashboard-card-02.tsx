@@ -3,13 +3,13 @@
 import EditMenu from '@/components/edit-menu'
 import LineChart01 from '@/components/charts/line-chart-01'
 import { chartAreaGradient } from '@/components/charts/chartjs-config'
-import { useGitHubAnalytics } from '@/hooks/use-github-analytics'
+import { useAnalytics } from '@/hooks/use-analytics-context'
 
 // Import utilities
 import { adjustColorOpacity, getCssVariable } from '@/components/utils/utils'
 
 export default function DashboardCard02() {
-  const { stats, loading, error } = useGitHubAnalytics()
+  const { stats, loading, error } = useAnalytics()
 
   // Create a simple line chart showing repository growth over time
   // For now, we'll simulate this data since GitHub doesn't provide historical repo creation data easily

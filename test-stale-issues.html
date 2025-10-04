@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stale Issues Tester</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .container { max-width: 800px; margin: 0 auto; }
+        .test-section { margin: 20px 0; padding: 20px; border: 1px solid #ddd; border-radius: 8px; }
+        .button { background: #007bff; color: white; padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer; margin: 5px; }
+        .button:hover { background: #0056b3; }
+        .result { margin: 10px 0; padding: 10px; background: #f8f9fa; border-radius: 4px; }
+        .success { background: #d4edda; border: 1px solid #c3e6cb; }
+        .error { background: #f8d7da; border: 1px solid #f5c6cb; }
+        input, select { padding: 8px; margin: 5px; border: 1px solid #ddd; border-radius: 4px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧪 Stale Issues Resolver Tester</h1>
+        
+        <div class="test-section">
+            <h3>1️⃣ Scan Stale Issues</h3>
+            <div>
+                <input type="text" id="repoInput" placeholder="owner/repo" value="Anugra07/ios_ecom" style="width: 200px;">
+                <input type="number" id="daysInput" placeholder="Days" value="30" style="width: 80px;">
+                <button class="button" onclick="scanStaleIssues()">🔍 Scan</button>
+            </div>
+            <div id="scanResult" class="result"></div>
+        </div>
+        
+        <div class="test-section">
+            <h3>2️⃣ Test Comment Action</h3>
+            <div>
+                <input type="number" id="issueNumber" placeholder="Issue #" value="1" style="width: 100px;">
+                <button class="button" onclick="testComment()">💬 Test Comment</button>
+            </div>
+            <div id="commentResult" class="result"></div>
+        </div>
+        
+        <div class="test-section">
+            <h3>3️⃣ Test Close Action</h3>
+            <div>
+                <input type="number" id="closeIssueNumber" placeholder="Issue #" value="1" style="width: 100px;">
+                <button class="button" onclick="testClose()">🔒 Test Close</button>
+            </div>
+            <div id="closeResult" class="result"></div>
+        </div>
+    </div>
+
+    <script>
+        async function scanStaleIssues() {
+            const repo = document.getElementById('repoInput').value;
+            const days = document.getElementById('daysInput').value;
+            const resultDiv = document.getElementById('scanResult');
+            
+            resultDiv.innerHTML = '🔄 Scanning...';
+            
+            try {
+                const response = await fetch(`/api/stale-issues?repo=${repo}&days=${days}`);
+                const data = await response.json();
+                
+                if (response.ok) {
+                    resultDiv.className = 'result success';
+                    resultDiv.innerHTML = `
+                        <h4>✅ Scan Successful!</h4>
+                        <p><strong>Repository:</strong> ${data.repository}</p>
+                        <p><strong>Days Threshold:</strong> ${data.daysThreshold}</p>
+                        <p><strong>Stale Issues Found:</strong> ${data.staleIssues}</p>
+                        <p><strong>Cleanup Queue:</strong> ${data.cleanupQueue?.length || 0} items</p>
+                        <p><strong>Summary:</strong></p>
+                        <ul>
+                            <li>Critical: ${data.summary?.byPriority?.critical || 0}</li>
+                            <li>High: ${data.summary?.byPriority?.high || 0}</li>
+                            <li>Medium: ${data.summary?.byPriority?.medium || 0}</li>
+                            <li>Low: ${data.summary?.byPriority?.low || 0}</li>
+                        </ul>
+                    `;
+                } else {
+                    resultDiv.className = 'result error';
+                    resultDiv.innerHTML = `❌ Scan Failed: ${data.error || 'Unknown error'}`;
+                }
+            } catch (error) {
+                resultDiv.className = 'result error';
+                resultDiv.innerHTML = `❌ Error: ${error.message}`;
+            }
+        }
+        
+        async function testComment() {
+            const repo = document.getElementById('repoInput').value;
+            const issueNumber = document.getElementById('issueNumber').value;
+            const resultDiv = document.getElementById('commentResult');
+            
+            resultDiv.innerHTML = '🔄 Testing comment...';
+            
+            try {
+                const response = await fetch('/api/stale-issues', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        action: 'comment',
+                        repository: repo,
+                        issueNumber: parseInt(issueNumber),
+                        analysis: {
+                            isStale: true,
+                            staleReason: 'needs_update',
+                            confidence: 0.8,
+                            reasoning: 'Test comment from Stale Issues Tester',
+                            suggestedAction: 'comment',
+                            cleanupPriority: 'medium'
+                        }
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    resultDiv.className = 'result success';
+                    resultDiv.innerHTML = `✅ Comment Action: ${data.message}`;
+                } else {
+                    resultDiv.className = 'result error';
+                    resultDiv.innerHTML = `❌ Comment Failed: ${data.error || 'Unknown error'}`;
+                }
+            } catch (error) {
+                resultDiv.className = 'result error';
+                resultDiv.innerHTML = `❌ Error: ${error.message}`;
+            }
+        }
+        
+        async function testClose() {
+            const repo = document.getElementById('repoInput').value;
+            const issueNumber = document.getElementById('closeIssueNumber').value;
+            const resultDiv = document.getElementById('closeResult');
+            
+            resultDiv.innerHTML = '🔄 Testing close...';
+            
+            try {
+                const response = await fetch('/api/stale-issues', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        action: 'close',
+                        repository: repo,
+                        issueNumber: parseInt(issueNumber),
+                        analysis: {
+                            isStale: true,
+                            staleReason: 'already_fixed',
+                            confidence: 0.9,
+                            reasoning: 'Test close from Stale Issues Tester',
+                            suggestedAction: 'close',
+                            cleanupPriority: 'high'
+                        }
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    resultDiv.className = 'result success';
+                    resultDiv.innerHTML = `✅ Close Action: ${data.message}`;
+                } else {
+                    resultDiv.className = 'result error';
+                    resultDiv.innerHTML = `❌ Close Failed: ${data.error || 'Unknown error'}`;
+                }
+            } catch (error) {
+                resultDiv.className = 'result error';
+                resultDiv.innerHTML = `❌ Error: ${error.message}`;
+            }
+        }
+    </script>
+</body>
+</html>
