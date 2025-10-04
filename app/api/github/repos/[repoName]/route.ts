@@ -137,8 +137,40 @@ export async function GET(
 
     if (!response.ok) {
       if (response.status === 404) {
-        console.log('❌ [DEBUG] Repository not found (404)')
-        return NextResponse.json({ error: 'Repository not found' }, { status: 404 })
+        console.log('❌ [DEBUG] Repository not found (404) - user may not be owner')
+        
+        // Try to find the repository in user's accessible repos
+        try {
+          console.log('🔍 [DEBUG] Searching for repository in user\'s accessible repositories...')
+          const userReposResponse = await fetch('https://api.github.com/user/repos?type=all&per_page=100', {
+            headers: {
+              'Authorization': `Bearer ${user.accessToken}`,
+              'Accept': 'application/vnd.github.v3+json',
+              'User-Agent': 'GitHub-Dashboard'
+            }
+          })
+          
+          if (userReposResponse.ok) {
+            const userRepos = await userReposResponse.json()
+            const foundRepo = userRepos.find((repo: any) => repo.name === repoName)
+            
+            if (foundRepo) {
+              console.log('✅ [DEBUG] Found repository in user\'s accessible repos:', foundRepo.full_name)
+              return NextResponse.json({ 
+                error: 'You are not the owner of this repository. You may be a collaborator.',
+                repo: foundRepo,
+                isCollaborator: true
+              }, { status: 403 })
+            }
+          }
+        } catch (searchError) {
+          console.log('❌ [DEBUG] Error searching user repositories:', searchError)
+        }
+        
+        return NextResponse.json({ 
+          error: 'Repository not found or you don\'t have access to it',
+          isCollaborator: false
+        }, { status: 404 })
       }
       if (response.status === 403) {
         console.log('❌ [DEBUG] GitHub API 403 - Access denied. This could be due to:')

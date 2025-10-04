@@ -46,10 +46,10 @@ export default function DashboardCard05() {
       color: 'text-green-600'
     },
     {
-      label: 'Total Commits',
-      value: stats?.totalCommits?.toLocaleString() || '0',
-      icon: '💾',
-      color: 'text-purple-600'
+      label: 'Open Issues',
+      value: stats?.totalIssues?.toLocaleString() || '0',
+      icon: '🐛',
+      color: 'text-red-600'
     }
   ]
 

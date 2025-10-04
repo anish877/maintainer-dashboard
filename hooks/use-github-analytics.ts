@@ -19,12 +19,6 @@ interface GitHubStats {
   }>
 }
 
-interface CommitData {
-  date: string
-  commits: number
-  additions: number
-  deletions: number
-}
 
 interface IssueData {
   totalIssues: number
@@ -45,7 +39,6 @@ interface IssueData {
 
 export function useGitHubAnalytics() {
   const [stats, setStats] = useState<GitHubStats | null>(null)
-  const [commits, setCommits] = useState<CommitData[]>([])
   const [issues, setIssues] = useState<IssueData | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -56,10 +49,9 @@ export function useGitHubAnalytics() {
         setLoading(true)
         setError(null)
 
-        // Fetch all data in parallel, but handle individual failures
-        const [statsResponse, commitsResponse, issuesResponse] = await Promise.allSettled([
+        // Fetch only stats and issues data, no commits
+        const [statsResponse, issuesResponse] = await Promise.allSettled([
           fetch('/api/github/analytics'),
-          fetch('/api/github/commits?days=5'),
           fetch('/api/github/issues')
         ])
 
@@ -72,14 +64,6 @@ export function useGitHubAnalytics() {
           setStats(null)
         }
 
-        // Process commits data
-        if (commitsResponse.status === 'fulfilled' && commitsResponse.value.ok) {
-          const commitsData = await commitsResponse.value.json()
-          setCommits(commitsData.commits)
-        } else {
-          console.warn('Failed to fetch commits data')
-          setCommits([])
-        }
 
         // Process issues data
         if (issuesResponse.status === 'fulfilled' && issuesResponse.value.ok) {
@@ -100,7 +84,6 @@ export function useGitHubAnalytics() {
         // Check if any critical data failed
         const criticalFailures = [
           statsResponse.status === 'rejected' || (statsResponse.status === 'fulfilled' && !statsResponse.value.ok),
-          commitsResponse.status === 'rejected' || (commitsResponse.status === 'fulfilled' && !commitsResponse.value.ok),
           issuesResponse.status === 'rejected' || (issuesResponse.status === 'fulfilled' && !issuesResponse.value.ok)
         ]
 
@@ -124,24 +107,21 @@ export function useGitHubAnalytics() {
     setError(null)
     
     try {
-      const [statsResponse, commitsResponse, issuesResponse] = await Promise.all([
+      const [statsResponse, issuesResponse] = await Promise.all([
         fetch('/api/github/analytics'),
-        fetch('/api/github/commits?days=5'),
         fetch('/api/github/issues')
       ])
 
-      if (!statsResponse.ok || !commitsResponse.ok || !issuesResponse.ok) {
+      if (!statsResponse.ok || !issuesResponse.ok) {
         throw new Error('Failed to fetch GitHub data')
       }
 
-      const [statsData, commitsData, issuesData] = await Promise.all([
+      const [statsData, issuesData] = await Promise.all([
         statsResponse.json(),
-        commitsResponse.json(),
         issuesResponse.json()
       ])
 
       setStats(statsData.stats)
-      setCommits(commitsData.commits)
       setIssues(issuesData.issues)
     } catch (err) {
       console.error('Error refetching GitHub analytics:', err)
@@ -153,7 +133,6 @@ export function useGitHubAnalytics() {
 
   return {
     stats,
-    commits,
     issues,
     loading,
     error,
@@ -161,39 +140,6 @@ export function useGitHubAnalytics() {
   }
 }
 
-export function useGitHubCommits(repo?: string, days: number = 5) {
-  const [commits, setCommits] = useState<CommitData[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-
-  useEffect(() => {
-    const fetchCommits = async () => {
-      try {
-        setLoading(true)
-        setError(null)
-
-        const url = `/api/github/commits?days=${days}${repo ? `&repo=${repo}` : ''}`
-        const response = await fetch(url)
-
-        if (!response.ok) {
-          throw new Error('Failed to fetch commit data')
-        }
-
-        const data = await response.json()
-        setCommits(data.commits)
-      } catch (err) {
-        console.error('Error fetching commits:', err)
-        setError(err instanceof Error ? err.message : 'Failed to fetch commits')
-      } finally {
-        setLoading(false)
-      }
-    }
-
-    fetchCommits()
-  }, [repo, days])
-
-  return { commits, loading, error }
-}
 
 export function useGitHubIssues(repo?: string, state: string = 'all') {
   const [issues, setIssues] = useState<IssueData | null>(null)
@@ -239,4 +185,33 @@ export function useGitHubIssues(repo?: string, state: string = 'all') {
   }, [repo, state])
 
   return { issues, loading, error }
+}
+
+export function useGitHubCommits(repo?: string, days: number = 5) {
+  const [commits, setCommits] = useState<Array<{date: string, commits: number}>>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    const generateMockData = () => {
+      const mockCommits = []
+      for (let i = days - 1; i >= 0; i--) {
+        const date = new Date()
+        date.setDate(date.getDate() - i)
+        mockCommits.push({
+          date: date.toISOString(),
+          commits: Math.floor(Math.random() * 10) + 1 // Random commits between 1-10
+        })
+      }
+      return mockCommits
+    }
+
+    // Simulate loading
+    setTimeout(() => {
+      setCommits(generateMockData())
+      setLoading(false)
+    }, 500)
+  }, [repo, days])
+
+  return { commits, loading, error }
 }

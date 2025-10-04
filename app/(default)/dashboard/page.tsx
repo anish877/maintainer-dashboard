@@ -74,8 +74,6 @@ export default function Dashboard() {
       {/* Cards */}
       <div key={refreshKey} className="grid grid-cols-12 gap-6">
 
-        {/* GitHub Commits Activity */}
-        <DashboardCard01 />
         {/* GitHub Repositories */}
         <DashboardCard02 />
         {/* GitHub Stars */}

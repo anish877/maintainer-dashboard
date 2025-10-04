@@ -40,6 +40,11 @@ export default function RepoHeatmapsPage() {
       
       if (!response.ok) {
         const errorData = await response.json()
+        if (response.status === 403 && errorData.isCollaborator) {
+          // User is a collaborator but not the owner
+          setError('You are not the owner of this repository. You may be a collaborator.')
+          return
+        }
         throw new Error(errorData.error || 'Failed to fetch repository data')
       }
       
@@ -65,7 +70,10 @@ export default function RepoHeatmapsPage() {
     setHeatmapData(null)
 
     try {
-      const [owner, repoNameOnly] = repoName.split('/')
+      // Use the actual repo data to get owner and repo name
+      const owner = repo.owner.login
+      const repoNameOnly = repo.name
+      
       console.log('🔍 [HEATMAPS FRONTEND DEBUG] Repository selection:', {
         repoName,
         owner,
@@ -146,20 +154,23 @@ export default function RepoHeatmapsPage() {
 
   if (error || !repo) {
     const isAuthError = error?.includes('Authentication required') || error?.includes('GitHub token') || error?.includes('Access denied')
+    const isCollaboratorError = error?.includes('not the owner of this repository')
     
     return (
       <div className="px-4 sm:px-6 lg:px-8 py-8 w-full max-w-[96rem] mx-auto">
         <div className="flex items-center justify-center min-h-[400px]">
-          <div className="text-center max-w-md">
-            <div className="text-red-500 mb-4 text-4xl">
-              {isAuthError ? '🔐' : '⚠️'}
-            </div>
+        <div className="text-center max-w-md">
+          <div className="text-red-500 mb-4 text-4xl">
+            {isAuthError ? '🔐' : isCollaboratorError ? '👥' : '⚠️'}
+          </div>
             <h2 className="text-xl font-semibold text-gray-800 dark:text-gray-100 mb-2">
-              {isAuthError ? 'Authentication Issue' : 'Repository Not Found'}
+              {isAuthError ? 'Authentication Issue' : isCollaboratorError ? 'Not Repository Owner' : 'Repository Not Found'}
             </h2>
             <p className="text-gray-500 dark:text-gray-400 mb-6">
               {isAuthError 
                 ? 'Your GitHub token may have expired or lacks permissions. Please sign out and sign back in to refresh your access.'
+                : isCollaboratorError
+                ? 'You appear to be a collaborator on this repository, but you are not the owner. Some features may be limited.'
                 : error || 'The requested repository could not be found.'
               }
             </p>
