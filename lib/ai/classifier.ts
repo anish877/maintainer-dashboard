@@ -1,7 +1,17 @@
 import OpenAI from 'openai';
 import { prisma } from '@/lib/prisma';
 
-const openai = new OpenAI({ apiKey: process.env.OPEN_AI_KEY });
+// Lazy initialization to prevent build-time errors
+let _openai: OpenAI | null = null;
+const getOpenAI = () => {
+  if (!_openai) {
+    if (!process.env.OPEN_AI_KEY) {
+      throw new Error('OpenAI API key is required. Set OPEN_AI_KEY environment variable.');
+    }
+    _openai = new OpenAI({ apiKey: process.env.OPEN_AI_KEY });
+  }
+  return _openai;
+};
 
 export interface ClassificationResult {
   is_bug: boolean;
@@ -56,7 +66,7 @@ Respond ONLY with valid JSON in this exact format:
 
 Focus on identifying actual bugs, errors, crashes, or issues that developers should be aware of.`;
 
-    const response = await openai.chat.completions.create({
+    const response = await getOpenAI().chat.completions.create({
       model: 'gpt-4o-mini',
       messages: [
         { 
@@ -72,7 +82,7 @@ Focus on identifying actual bugs, errors, crashes, or issues that developers sho
     const classification = JSON.parse(response.choices[0].message.content!) as ClassificationResult;
     
     // Step 2: Generate embedding for duplicate detection
-    const embeddingResponse = await openai.embeddings.create({
+    const embeddingResponse = await getOpenAI().embeddings.create({
       model: 'text-embedding-3-small',
       input: `${post.title} ${classification.summary}`
     });
