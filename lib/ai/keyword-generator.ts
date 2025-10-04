@@ -1,8 +1,18 @@
 import OpenAI from 'openai';
 
-const openai = new OpenAI({
-  apiKey: process.env.OPEN_AI_KEY,
-});
+// Lazy initialization to prevent build-time errors
+let _openai: OpenAI | null = null;
+const getOpenAI = () => {
+  if (!_openai) {
+    if (!process.env.OPEN_AI_KEY) {
+      throw new Error('OpenAI API key is required. Set OPEN_AI_KEY environment variable.');
+    }
+    _openai = new OpenAI({
+      apiKey: process.env.OPEN_AI_KEY,
+    });
+  }
+  return _openai;
+};
 
 export interface KeywordGenerationResult {
   keywords: string[];
@@ -19,7 +29,7 @@ export class AIKeywordGenerator {
     try {
       const prompt = this.buildPrompt(repositoryName, repositoryDescription, repositoryTopics);
       
-      const response = await openai.chat.completions.create({
+      const response = await getOpenAI().chat.completions.create({
         model: "gpt-4o-mini",
         messages: [
           {
