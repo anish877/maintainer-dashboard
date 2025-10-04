@@ -544,5 +544,13 @@ Conditions: ${JSON.stringify(template.conditions || {})}`
   }
 }
 
-// Export singleton instance
-export const completenessAnalyzer = new CompletenessAnalyzer()
+// Export singleton instance (lazy initialization)
+let _completenessAnalyzer: CompletenessAnalyzer | null = null
+export const completenessAnalyzer = {
+  get instance() {
+    if (!_completenessAnalyzer) {
+      _completenessAnalyzer = new CompletenessAnalyzer()
+    }
+    return _completenessAnalyzer
+  }
+}

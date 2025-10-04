@@ -131,7 +131,7 @@ export async function POST(request: NextRequest) {
             }
 
             // Analyze issue completeness with template context
-            const analysis = await completenessAnalyzer.analyzeIssue(issueData, repositoryTemplates)
+            const analysis = await completenessAnalyzer.instance.analyzeIssue(issueData, repositoryTemplates)
 
             // Determine if issue is complete (score >= 80)
             const isComplete = analysis.overallScore >= 80
