@@ -1,0 +1,86 @@
+{
+  "timestamp": "2025-10-04T21:19:24.010Z",
+  "summary": {
+    "total": 15,
+    "passed": 10,
+    "failed": 5,
+    "successRate": 67
+  },
+  "details": [
+    {
+      "name": "Environment Configuration",
+      "status": "PASSED",
+      "details": "All required environment variables are configured"
+    },
+    {
+      "name": "Database Schema Validation",
+      "status": "FAILED",
+      "error": "Missing model in schema: model CompletenessTemplate"
+    },
+    {
+      "name": "Prisma Client Generation",
+      "status": "PASSED",
+      "details": "Prisma client generated successfully"
+    },
+    {
+      "name": "Database Connection",
+      "status": "PASSED",
+      "details": "Database connection successful"
+    },
+    {
+      "name": "Core API Endpoints",
+      "status": "PASSED",
+      "details": "All core API endpoints are present"
+    },
+    {
+      "name": "AI Analysis Engine",
+      "status": "PASSED",
+      "details": "AI analysis engine files are present"
+    },
+    {
+      "name": "Frontend Components",
+      "status": "PASSED",
+      "details": "All frontend components are present"
+    },
+    {
+      "name": "Navigation Integration",
+      "status": "PASSED",
+      "details": "Completeness Checker is integrated in navigation"
+    },
+    {
+      "name": "TypeScript Compilation",
+      "status": "FAILED",
+      "error": "TypeScript compilation failed: Command failed: npx tsc --noEmit"
+    },
+    {
+      "name": "Next.js Build Test",
+      "status": "FAILED",
+      "error": "Next.js build failed: Command failed: npm run build\nFailed to compile.\n\n./app/api/completeness/analyze-repository/route.ts:77:15\nType error: Object literal may only specify known properties, and 'createdAt' does not exist in type 'IssueData'.\n\n\u001b[0m \u001b[90m 75 |\u001b[39m               author\u001b[33m:\u001b[39m issue\u001b[33m.\u001b[39muser\u001b[33m?\u001b[39m\u001b[33m.\u001b[39mlogin \u001b[33m||\u001b[39m \u001b[32m'unknown'\u001b[39m\u001b[33m,\u001b[39m\u001b[0m\n\u001b[0m \u001b[90m 76 |\u001b[39m               repository\u001b[33m:\u001b[39m repositoryFullName\u001b[33m,\u001b[39m\u001b[0m\n\u001b[0m\u001b[31m\u001b[1m>\u001b[22m\u001b[39m\u001b[90m 77 |\u001b[39m               createdAt\u001b[33m:\u001b[39m issue\u001b[33m.\u001b[39mcreated_at\u001b[33m,\u001b[39m\u001b[0m\n\u001b[0m \u001b[90m    |\u001b[39m               \u001b[31m\u001b[1m^\u001b[22m\u001b[39m\u001b[0m\n\u001b[0m \u001b[90m 78 |\u001b[39m               labels\u001b[33m:\u001b[39m issue\u001b[33m.\u001b[39mlabels\u001b[33m?\u001b[39m\u001b[33m.\u001b[39mmap((label\u001b[33m:\u001b[39m any) \u001b[33m=>\u001b[39m \u001b[0m\n\u001b[0m \u001b[90m 79 |\u001b[39m                 \u001b[36mtypeof\u001b[39m label \u001b[33m===\u001b[39m \u001b[32m'string'\u001b[39m \u001b[33m?\u001b[39m label \u001b[33m:\u001b[39m label\u001b[33m.\u001b[39mname\u001b[0m\n\u001b[0m \u001b[90m 80 |\u001b[39m               ) \u001b[33m||\u001b[39m []\u001b[0m\nStatic worker exited with code: 1 and signal: null\n"
+    },
+    {
+      "name": "File Structure Validation",
+      "status": "PASSED",
+      "details": "All required file structure is present"
+    },
+    {
+      "name": "Package Dependencies",
+      "status": "PASSED",
+      "details": "All required dependencies are installed"
+    },
+    {
+      "name": "Code Quality (Linting)",
+      "status": "FAILED",
+      "error": "Linting failed: Command failed: npm run lint\n ⚠ If you set up ESLint yourself, we recommend adding the Next.js ESLint plugin. See https://nextjs.org/docs/app/api-reference/config/eslint#migrating-existing-config\n"
+    },
+    {
+      "name": "Documentation",
+      "status": "PASSED",
+      "details": "All documentation files are present"
+    },
+    {
+      "name": "Setup Script Validation",
+      "status": "FAILED",
+      "error": "Setup script missing feature: Template Creation"
+    }
+  ]
+}
