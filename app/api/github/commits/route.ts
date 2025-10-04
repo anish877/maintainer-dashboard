@@ -71,6 +71,10 @@ export async function GET(request: NextRequest) {
 
     let commitsData: CommitData[] = []
 
+    if (!username) {
+      return NextResponse.json({ error: 'Username not available' }, { status: 400 })
+    }
+
     if (repo) {
       // Get commits for specific repository
       const [owner, repoName] = repo.split('/')

@@ -2,6 +2,8 @@
 
 import { useState, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
+import RepoAssignments from './repo-assignments'
+import RepoMaintainerControls from './repo-maintainer-controls'
 
 export default function RepoDashboard() {
   const params = useParams()
@@ -342,6 +344,16 @@ export default function RepoDashboard() {
           </div>
         </div>
 
+      </div>
+
+      {/* Maintainer Controls Section */}
+      <div className="mt-8">
+        <RepoMaintainerControls repoName={repoName} onRefresh={() => window.location.reload()} />
+      </div>
+
+      {/* Assignments Section */}
+      <div className="mt-8">
+        <RepoAssignments repoName={repoName} />
       </div>
 
     </div>

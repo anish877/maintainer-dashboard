@@ -125,9 +125,9 @@ function formatTriageMessage(result: any): string {
     return '❌ Issue triage failed. Please check the logs for details.';
   }
   
-  const goodFirstIssues = result.results.filter(r => r.difficulty === 'good first issue').length;
-  const criticalIssues = result.results.filter(r => r.priority === 'critical').length;
-  const highPriorityIssues = result.results.filter(r => r.priority === 'high').length;
+  const goodFirstIssues = result.results.filter((r: any) => r.difficulty === 'good first issue').length;
+  const criticalIssues = result.results.filter((r: any) => r.priority === 'critical').length;
+  const highPriorityIssues = result.results.filter((r: any) => r.priority === 'high').length;
   
   let message = `✅ Successfully triaged ${summary.successfulTriages} out of ${summary.totalIssues} issues with ${Math.round(summary.averageConfidence * 100)}% average confidence.\n\n`;
   

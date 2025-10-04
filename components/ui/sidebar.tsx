@@ -591,13 +591,13 @@ export default function Sidebar({
                 </SidebarLink>
               </li>
               {/* GitHub */}
-              <SidebarLinkGroup open={segments.includes('repos') || segments.includes('triage') || segments.includes('chat')}>
+              <SidebarLinkGroup open={segments.includes('repos') || segments.includes('triage') || segments.includes('chat') || segments.includes('assignments')}>
                 {(handleClick, open) => {
                   return (
                     <>
                       <a
                         href="#0"
-                        className={`block text-gray-800 dark:text-gray-100 truncate transition ${segments.includes('repos') || segments.includes('triage') || segments.includes('chat') ? '' : 'hover:text-gray-900 dark:hover:text-white'
+                        className={`block text-gray-800 dark:text-gray-100 truncate transition ${segments.includes('repos') || segments.includes('triage') || segments.includes('chat') || segments.includes('assignments') ? '' : 'hover:text-gray-900 dark:hover:text-white'
                           }`}
                         onClick={(e) => {
                           e.preventDefault()
@@ -606,7 +606,7 @@ export default function Sidebar({
                       >
                         <div className="flex items-center justify-between">
                           <div className="flex items-center">
-                            <svg className={`shrink-0 fill-current ${segments.includes('repos') || segments.includes('triage') || segments.includes('chat') ? 'text-violet-500' : 'text-gray-400 dark:text-gray-500'}`} xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16">
+                            <svg className={`shrink-0 fill-current ${segments.includes('repos') || segments.includes('triage') || segments.includes('chat') || segments.includes('assignments') ? 'text-violet-500' : 'text-gray-400 dark:text-gray-500'}`} xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16">
                               <path d="M8 0C3.58 0 0 3.58 0 8s3.58 8 8 8 8-3.58 8-8-3.58-8-8-8zm0 14c-3.31 0-6-2.69-6-6s2.69-6 6-6 6 2.69 6 6-2.69 6-6 6zm-1-9h2v2H7V5zm0 3h2v4H7V8z"/>
                             </svg>
                             <span className="text-sm font-medium ml-4 lg:opacity-0 lg:sidebar-expanded:opacity-100 2xl:opacity-100 duration-200">
@@ -644,6 +644,13 @@ export default function Sidebar({
                             <SidebarLink href="/repos">
                               <span className="text-sm font-medium lg:opacity-0 lg:sidebar-expanded:opacity-100 2xl:opacity-100 duration-200">
                                 Repositories
+                              </span>
+                            </SidebarLink>
+                          </li>
+                          <li className="mb-1 last:mb-0">
+                            <SidebarLink href="/assignments">
+                              <span className="text-sm font-medium lg:opacity-0 lg:sidebar-expanded:opacity-100 2xl:opacity-100 duration-200">
+                                Assignments
                               </span>
                             </SidebarLink>
                           </li>

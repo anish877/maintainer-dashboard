@@ -107,7 +107,7 @@ export async function POST(request: NextRequest) {
         );
 
         // Add new labels
-        const labelsToSet = [...existingLabels, ...labelsToAdd];
+        const labelsToSet = [...existingLabels, ...labelsToAdd].filter((label): label is string => label !== undefined);
         
         await octokit.rest.issues.setLabels({
           owner,
