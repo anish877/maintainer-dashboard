@@ -1,0 +1,125 @@
+# AI Issue Triage Configuration
+# This file contains the configuration for the intelligent issue triage system
+
+# GitHub Repository Configuration
+repository:
+  owner: "your-github-username"
+  name: "your-repository-name"
+  
+# AI Configuration
+ai:
+  model: "gpt-3.5-turbo"  # or "gpt-4" for better accuracy
+  confidence_threshold: 0.6  # Minimum confidence to apply labels
+  temperature: 0.1  # Lower temperature for more consistent results
+
+# Label Mappings
+labels:
+  type:
+    bug: "bug"
+    feature: "enhancement"
+    question: "question"
+    documentation: "documentation"
+    enhancement: "enhancement"
+    task: "task"
+  
+  priority:
+    critical: "priority: critical"
+    high: "priority: high"
+    medium: "priority: medium"
+    low: "priority: low"
+  
+  difficulty:
+    "good first issue": "good first issue"
+    intermediate: "difficulty: intermediate"
+    advanced: "difficulty: advanced"
+    expert: "difficulty: expert"
+  
+  components:
+    authentication: "area: auth"
+    database: "area: database"
+    api: "area: api"
+    frontend: "area: frontend"
+    backend: "area: backend"
+    testing: "area: testing"
+    deployment: "area: deployment"
+    documentation: "area: docs"
+    general: "area: general"
+
+# Team Expertise Mapping
+team:
+  - username: "alice"
+    components: ["frontend", "ui"]
+    expertise: ["react", "typescript", "css", "design"]
+    availability: "available"
+    
+  - username: "bob"
+    components: ["backend", "api", "database"]
+    expertise: ["nodejs", "python", "postgresql", "microservices"]
+    availability: "available"
+    
+  - username: "charlie"
+    components: ["infrastructure", "deployment"]
+    expertise: ["docker", "kubernetes", "aws", "ci-cd"]
+    availability: "busy"
+    
+  - username: "diana"
+    components: ["testing", "quality"]
+    expertise: ["jest", "cypress", "testing", "quality-assurance"]
+    availability: "available"
+
+# Automation Settings
+automation:
+  # Auto-apply labels when confidence is above threshold
+  auto_apply_labels: true
+  
+  # Add triage comments to issues
+  add_triage_comments: true
+  
+  # Suggest assignees (requires write permissions)
+  suggest_assignees: false
+  
+  # Skip issues that already have many labels (likely already triaged)
+  skip_if_many_labels: true
+  max_existing_labels: 5
+  
+  # Rate limiting
+  delay_between_requests: 2000  # milliseconds
+
+# Clustering Settings
+clustering:
+  # Find similar issues using embeddings
+  find_similar_issues: true
+  
+  # Similarity threshold for clustering
+  similarity_threshold: 0.7
+  
+  # Maximum number of similar issues to find
+  max_similar_issues: 5
+
+# GitHub Actions Integration
+github_actions:
+  # Trigger on new issues
+  trigger_on_issues: true
+  
+  # Trigger on issue edits
+  trigger_on_edits: true
+  
+  # Manual trigger via workflow_dispatch
+  allow_manual_trigger: true
+  
+  # Comment on triaged issues
+  comment_on_triage: true
+
+# Advanced Features
+features:
+  # Good first issue detection
+  detect_good_first_issues: true
+  
+  # Issue complexity analysis
+  analyze_complexity: true
+  
+  # Component impact assessment
+  assess_component_impact: true
+  
+  # Priority escalation detection
+  detect_priority_escalation: true

@@ -26,20 +26,47 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'GitHub access token not found' }, { status: 400 })
     }
 
-    // Fetch repositories from GitHub API
-    const githubResponse = await fetch('https://api.github.com/user/repos?sort=updated&per_page=100', {
-      headers: {
-        'Authorization': `Bearer ${user.accessToken}`,
-        'Accept': 'application/vnd.github.v3+json',
-        'User-Agent': 'Maintainer-Dashboard'
-      }
-    })
+    // Fetch all repositories from GitHub API with pagination
+    let allRepos: any[] = []
+    let page = 1
+    const perPage = 100
+    
+    while (true) {
+      const githubResponse = await fetch(`https://api.github.com/user/repos?sort=updated&per_page=${perPage}&page=${page}`, {
+        headers: {
+          'Authorization': `Bearer ${user.accessToken}`,
+          'Accept': 'application/vnd.github.v3+json',
+          'User-Agent': 'Maintainer-Dashboard'
+        }
+      })
 
-    if (!githubResponse.ok) {
-      throw new Error(`GitHub API error: ${githubResponse.status}`)
+      if (!githubResponse.ok) {
+        throw new Error(`GitHub API error: ${githubResponse.status}`)
+      }
+
+      const pageRepos = await githubResponse.json()
+      
+      // If no more repos, break the loop
+      if (pageRepos.length === 0) {
+        break
+      }
+      
+      allRepos = allRepos.concat(pageRepos)
+      
+      // If we got less than perPage, we've reached the end
+      if (pageRepos.length < perPage) {
+        break
+      }
+      
+      page++
+      
+      // Safety limit to prevent infinite loops (max 50 pages = 5000 repos)
+      if (page > 50) {
+        break
+      }
     }
 
-    const githubRepos = await githubResponse.json()
+    const githubRepos = allRepos
 
     // Transform GitHub data to our format
     const repos = githubRepos.map((repo: any) => ({

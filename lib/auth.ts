@@ -45,16 +45,12 @@ export const authOptions: NextAuthOptions = {
       return true
     },
     async redirect({ url, baseUrl }) {
-      console.log("🔄 Redirect callback:", { url, baseUrl })
-      
       // Redirect to dashboard after successful signin
       if (url.startsWith("/")) return `${baseUrl}${url}`
       else if (new URL(url).origin === baseUrl) return url
       return `${baseUrl}/dashboard`
     },
     async session({ session, token }) {
-      console.log("📱 Session callback:", { sessionUserId: session.user?.id, tokenUserId: token.sub })
-      
       // Add user ID and GitHub info to session
       if (session.user && token.sub) {
         session.user.id = token.sub
@@ -76,8 +72,6 @@ export const authOptions: NextAuthOptions = {
       return session
     },
     async jwt({ token, user, account }) {
-      console.log("🎫 JWT callback:", { userId: user?.id, accountProvider: account?.provider })
-      
       // Persist the OAuth access_token to the token right after signin
       if (account) {
         token.accessToken = account.access_token

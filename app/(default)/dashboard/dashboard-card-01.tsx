@@ -3,33 +3,24 @@
 import EditMenu from '@/components/edit-menu'
 import LineChart01 from '@/components/charts/line-chart-01'
 import { chartAreaGradient } from '@/components/charts/chartjs-config'
+import { useGitHubCommits } from '@/hooks/use-github-analytics'
 
 // Import utilities
 import { adjustColorOpacity, getCssVariable } from '@/components/utils/utils'
 
 export default function DashboardCard01() {
+  const { commits, loading, error } = useGitHubCommits(undefined, 30)
 
+  // Transform commit data for the chart
   const chartData = {
-    labels: [
-      '12-01-2022', '01-01-2023', '02-01-2023',
-      '03-01-2023', '04-01-2023', '05-01-2023',
-      '06-01-2023', '07-01-2023', '08-01-2023',
-      '09-01-2023', '10-01-2023', '11-01-2023',
-      '12-01-2023', '01-01-2024', '02-01-2024',
-      '03-01-2024', '04-01-2024', '05-01-2024',
-      '06-01-2024', '07-01-2024', '08-01-2024',
-      '09-01-2024', '10-01-2024', '11-01-2024',
-      '12-01-2024', '01-01-2025',
-    ],
+    labels: commits.map(commit => {
+      const date = new Date(commit.date)
+      return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+    }),
     datasets: [
-      // Indigo line
+      // Commits line
       {
-        data: [
-          732, 610, 610, 504, 504, 504, 349,
-          349, 504, 342, 504, 610, 391, 192,
-          154, 273, 191, 191, 126, 263, 349,
-          252, 423, 622, 470, 532,
-        ],
+        data: commits.map(commit => commit.commits),
         fill: true,
         backgroundColor: function(context: any) {
           const chart = context.chart;
@@ -51,40 +42,69 @@ export default function DashboardCard01() {
         clip: 20,
         tension: 0.2,
       },
-      // Gray line
-      {
-        data: [
-          532, 532, 532, 404, 404, 314, 314,
-          314, 314, 314, 234, 314, 234, 234,
-          314, 314, 314, 388, 314, 202, 202,
-          202, 202, 314, 720, 642,
-        ],
-        borderColor: adjustColorOpacity(getCssVariable('--color-gray-500'), 0.25),
-        borderWidth: 2,
-        pointRadius: 0,
-        pointHoverRadius: 3,
-        pointBackgroundColor: adjustColorOpacity(getCssVariable('--color-gray-500'), 0.25),
-        pointHoverBackgroundColor: adjustColorOpacity(getCssVariable('--color-gray-500'), 0.25),
-        pointBorderWidth: 0,
-        pointHoverBorderWidth: 0,        
-        clip: 20,
-        tension: 0.2,
-      },
     ],
+  }
+
+  // Calculate total commits and trend
+  const totalCommits = commits.reduce((sum, commit) => sum + commit.commits, 0)
+  const lastWeekCommits = commits.slice(-7).reduce((sum, commit) => sum + commit.commits, 0)
+  const previousWeekCommits = commits.slice(-14, -7).reduce((sum, commit) => sum + commit.commits, 0)
+  const trendPercentage = previousWeekCommits > 0 ? Math.round(((lastWeekCommits - previousWeekCommits) / previousWeekCommits) * 100) : 0
+
+  // Show error state if there's an error
+  if (error) {
+    return (
+      <div className="flex flex-col col-span-full sm:col-span-6 xl:col-span-4 bg-white dark:bg-gray-800 shadow-sm rounded-xl">
+        <div className="px-5 pt-5">
+          <header className="flex justify-between items-start mb-2">
+            <h2 className="text-lg font-semibold text-gray-800 dark:text-gray-100 mb-2">Commits Activity</h2>
+          </header>
+          <div className="text-sm text-red-600 dark:text-red-400">
+            Failed to load commits data
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  if (loading) {
+    return (
+      <div className="flex flex-col col-span-full sm:col-span-6 xl:col-span-4 bg-white dark:bg-gray-800 shadow-sm rounded-xl">
+        <div className="px-5 pt-5">
+          <header className="flex justify-between items-start mb-2">
+            <h2 className="text-lg font-semibold text-gray-800 dark:text-gray-100 mb-2">Commits Activity</h2>
+          </header>
+          <div className="text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase mb-1">Loading...</div>
+          <div className="animate-pulse">
+            <div className="h-8 bg-gray-200 dark:bg-gray-700 rounded w-24 mb-2"></div>
+            <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-16"></div>
+          </div>
+        </div>
+        <div className="grow max-sm:max-h-[128px] xl:max-h-[128px] flex items-center justify-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-violet-500"></div>
+        </div>
+      </div>
+    )
   }
 
   return(
     <div className="flex flex-col col-span-full sm:col-span-6 xl:col-span-4 bg-white dark:bg-gray-800 shadow-sm rounded-xl">
       <div className="px-5 pt-5">
         <header className="flex justify-between items-start mb-2">
-          <h2 className="text-lg font-semibold text-gray-800 dark:text-gray-100 mb-2">Acme Plus</h2>
+          <h2 className="text-lg font-semibold text-gray-800 dark:text-gray-100 mb-2">Commits Activity</h2>
           {/* Menu button */}
           <EditMenu align="right" />
         </header>
-        <div className="text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase mb-1">Sales</div>
+        <div className="text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase mb-1">Last 30 Days</div>
         <div className="flex items-start">
-          <div className="text-3xl font-bold text-gray-800 dark:text-gray-100 mr-2">$24,780</div>
-          <div className="text-sm font-medium text-green-700 px-1.5 bg-green-500/20 rounded-full">+49%</div>
+          <div className="text-3xl font-bold text-gray-800 dark:text-gray-100 mr-2">{totalCommits}</div>
+          <div className={`text-sm font-medium px-1.5 rounded-full ${
+            trendPercentage >= 0 
+              ? 'text-green-700 bg-green-500/20' 
+              : 'text-red-700 bg-red-500/20'
+          }`}>
+            {trendPercentage >= 0 ? '+' : ''}{trendPercentage}%
+          </div>
         </div>
       </div>
       {/* Chart built with Chart.js 3 */}

@@ -6,12 +6,17 @@
     "dev": "next dev --turbopack",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "triage:example": "tsx examples/issue-triage-example.ts",
+    "triage:single": "node scripts/ai-triage.js",
+    "triage:comment": "node scripts/add-triage-comment.js",
+    "triage:setup": "node scripts/setup-triage.js"
   },
   "dependencies": {
     "@ai-sdk/openai": "^2.0.42",
     "@auth/prisma-adapter": "^2.10.0",
     "@headlessui/react": "^2.2.0",
+    "@octokit/rest": "^20.0.2",
     "@prisma/client": "^6.16.3",
     "@radix-ui/react-popover": "^1.1.5",
     "@types/node": "^22.13.0",
@@ -25,6 +30,7 @@
     "next": "15.1.6",
     "next-auth": "^4.24.11",
     "next-themes": "^0.4.4",
+    "openai": "^4.52.7",
     "prisma": "^6.16.3",
     "react": "19.0.0",
     "react-day-picker": "^9.5.1",

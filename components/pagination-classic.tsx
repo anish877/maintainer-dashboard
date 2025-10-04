@@ -1,4 +1,17 @@
-export default function PaginationClassic() {
+interface PaginationClassicProps {
+  totalItems?: number
+  currentPage?: number
+  itemsPerPage?: number
+}
+
+export default function PaginationClassic({ 
+  totalItems = 0, 
+  currentPage = 1, 
+  itemsPerPage = 10 
+}: PaginationClassicProps) {
+  const startItem = (currentPage - 1) * itemsPerPage + 1
+  const endItem = Math.min(currentPage * itemsPerPage, totalItems)
+  
   return (
     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
       <nav className="mb-4 sm:mb-0 sm:order-1" role="navigation" aria-label="Navigation">
@@ -12,7 +25,7 @@ export default function PaginationClassic() {
         </ul>
       </nav>
       <div className="text-sm text-gray-500 text-center sm:text-left">
-        Showing <span className="font-medium text-gray-600 dark:text-gray-300">1</span> to <span className="font-medium text-gray-600 dark:text-gray-300">10</span> of <span className="font-medium text-gray-600 dark:text-gray-300">467</span> results
+        Showing <span className="font-medium text-gray-600 dark:text-gray-300">{startItem}</span> to <span className="font-medium text-gray-600 dark:text-gray-300">{endItem}</span> of <span className="font-medium text-gray-600 dark:text-gray-300">{totalItems}</span> results
       </div>
     </div>
   )

@@ -1,0 +1,63 @@
+name: AI Issue Triage & Auto-Labeling
+
+on:
+  issues:
+    types: [opened, edited]
+  workflow_dispatch:
+    inputs:
+      issue_numbers:
+        description: 'Comma-separated issue numbers to triage'
+        required: false
+        type: string
+
+jobs:
+  triage-issues:
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+      contents: read
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: |
+          npm install @octokit/rest openai
+
+      - name: Determine issues to triage
+        id: issues
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ -n "${{ github.event.inputs.issue_numbers }}" ]; then
+            # Manual trigger with specific issue numbers
+            ISSUES="${{ github.event.inputs.issue_numbers }}"
+          elif [ "${{ github.event_name }}" = "issues" ]; then
+            # Automatic trigger on issue events
+            ISSUES="${{ github.event.issue.number }}"
+          else
+            # Default: triage recent open issues
+            ISSUES=$(gh issue list --state open --limit 10 --json number --jq '.[].number' | tr '\n' ',' | sed 's/,$//')
+          fi
+          echo "issues=$ISSUES" >> $GITHUB_OUTPUT
+
+      - name: Run AI Issue Triage
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          REPO_OWNER: ${{ github.repository_owner }}
+          REPO_NAME: ${{ github.event.repository.name }}
+        run: |
+          node scripts/ai-triage.js "${{ steps.issues.outputs.issues }}"
+
+      - name: Comment on triaged issues
+        if: success()
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          node scripts/add-triage-comment.js "${{ steps.issues.outputs.issues }}"
