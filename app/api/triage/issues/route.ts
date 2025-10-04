@@ -66,8 +66,8 @@ export async function POST(request: NextRequest) {
         suggestedAssignees: result.summary.suggestedAssignees,
         similarIssueClusters: result.summary.similarIssueClusters
       },
-      results: result.results.map(r => ({
-        issueNumber: r.relatedIssues?.[0] || 'unknown', // This would need to be passed from the triage function
+      results: result.results.map((r, index) => ({
+        issueNumber: issueNumbers[index] || 'unknown', // Use the actual issue number from the request
         type: r.type,
         priority: r.priority,
         component: r.component,

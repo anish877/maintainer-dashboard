@@ -47,9 +47,9 @@ export class AIEnhancedIssueTriage extends GitHubIssueTriage {
     this.aiConfig = config;
     
     // Initialize OpenAI with API key from config or environment
-    const apiKey = config.openaiApiKey || process.env.OPENAI_API_KEY;
+    const apiKey = config.openaiApiKey || process.env.OPEN_AI_KEY;
     if (!apiKey) {
-      throw new Error('OpenAI API key is required. Set openaiApiKey in config or OPENAI_API_KEY environment variable.');
+      throw new Error('OpenAI API key is required. Set openaiApiKey in config or OPEN_AI_KEY environment variable.');
     }
     
     this.openai = new OpenAI({
@@ -538,7 +538,7 @@ export async function createAIEnhancedTriageFromSession(owner: string, repo: str
     throw new Error('User must be authenticated to use the AI triage system');
   }
 
-  const baseConfig = createSessionBasedTriageConfig(session.user.id, owner, repo);
+  const baseConfig = await createSessionBasedTriageConfig(session.user.id, owner, repo);
   const aiConfig: AIEnhancedConfig = {
     ...baseConfig,
     openaiApiKey,
