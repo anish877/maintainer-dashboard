@@ -2,6 +2,8 @@
 
 import { useState, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
+import RepoAssignments from './repo-assignments'
+import RepoMaintainerControls from './repo-maintainer-controls'
 
 export default function RepoDashboard() {
   const params = useParams()
@@ -104,11 +106,29 @@ export default function RepoDashboard() {
 
         {/* Right: Actions */}
         <div className="grid grid-flow-col sm:auto-cols-max justify-start sm:justify-end gap-2">
+          <button
+            onClick={() => router.push(`/${repoName}/triage`)}
+            className="inline-flex items-center gap-2 bg-violet-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-violet-700 transition-colors"
+          >
+            🤖 Triage
+          </button>
+          <button
+            onClick={() => router.push(`/${repoName}/duplicate`)}
+            className="inline-flex items-center gap-2 bg-purple-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-purple-700 transition-colors"
+          >
+            🔍 Duplicate Detection
+          </button>
+          <button
+            onClick={() => router.push(`/${repoName}/spam`)}
+            className="inline-flex items-center gap-2 bg-red-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-red-700 transition-colors"
+          >
+            🛡️ Spam Detection
+          </button>
           <a
             href={repo.html_url}
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center gap-2 bg-purple-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-purple-700 transition-colors"
+            className="inline-flex items-center gap-2 bg-gray-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-gray-700 transition-colors"
           >
             🔗 View on GitHub
           </a>
@@ -261,6 +281,33 @@ export default function RepoDashboard() {
             Quick Actions
           </h3>
           <div className="space-y-3">
+            <button
+              onClick={() => router.push(`/${repoName}/triage`)}
+              className="flex items-center gap-3 p-3 rounded-lg bg-violet-50 dark:bg-violet-900/20 hover:bg-violet-100 dark:hover:bg-violet-900/30 transition-colors w-full text-left"
+            >
+              <span className="text-lg">🤖</span>
+              <span className="text-sm font-medium text-violet-800 dark:text-violet-200">
+                AI Issue Triage
+              </span>
+            </button>
+            <button
+              onClick={() => router.push(`/${repoName}/duplicate`)}
+              className="flex items-center gap-3 p-3 rounded-lg bg-purple-50 dark:bg-purple-900/20 hover:bg-purple-100 dark:hover:bg-purple-900/30 transition-colors w-full text-left"
+            >
+              <span className="text-lg">🔍</span>
+              <span className="text-sm font-medium text-purple-800 dark:text-purple-200">
+                Duplicate Detection
+              </span>
+            </button>
+            <button
+              onClick={() => router.push(`/${repoName}/spam`)}
+              className="flex items-center gap-3 p-3 rounded-lg bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors w-full text-left"
+            >
+              <span className="text-lg">🛡️</span>
+              <span className="text-sm font-medium text-red-800 dark:text-red-200">
+                Spam Detection
+              </span>
+            </button>
             <a
               href={repo.html_url}
               target="_blank"
@@ -297,6 +344,16 @@ export default function RepoDashboard() {
           </div>
         </div>
 
+      </div>
+
+      {/* Maintainer Controls Section */}
+      <div className="mt-8">
+        <RepoMaintainerControls repoName={repoName} onRefresh={() => window.location.reload()} />
+      </div>
+
+      {/* Assignments Section */}
+      <div className="mt-8">
+        <RepoAssignments repoName={repoName} />
       </div>
 
     </div>

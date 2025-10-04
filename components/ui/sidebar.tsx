@@ -644,6 +644,76 @@ export default function Sidebar({
                   </div>
                 </SidebarLink>
               </li>
+              {/* GitHub */}
+              <SidebarLinkGroup open={segments.includes('repos') || segments.includes('triage') || segments.includes('chat') || segments.includes('assignments')}>
+                {(handleClick, open) => {
+                  return (
+                    <>
+                      <a
+                        href="#0"
+                        className={`block text-gray-800 dark:text-gray-100 truncate transition ${segments.includes('repos') || segments.includes('triage') || segments.includes('chat') || segments.includes('assignments') ? '' : 'hover:text-gray-900 dark:hover:text-white'
+                          }`}
+                        onClick={(e) => {
+                          e.preventDefault()
+                          expandOnly ? setSidebarExpanded(true) : handleClick()
+                        }}
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center">
+                            <svg className={`shrink-0 fill-current ${segments.includes('repos') || segments.includes('triage') || segments.includes('chat') || segments.includes('assignments') ? 'text-violet-500' : 'text-gray-400 dark:text-gray-500'}`} xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16">
+                              <path d="M8 0C3.58 0 0 3.58 0 8s3.58 8 8 8 8-3.58 8-8-3.58-8-8-8zm0 14c-3.31 0-6-2.69-6-6s2.69-6 6-6 6 2.69 6 6-2.69 6-6 6zm-1-9h2v2H7V5zm0 3h2v4H7V8z"/>
+                            </svg>
+                            <span className="text-sm font-medium ml-4 lg:opacity-0 lg:sidebar-expanded:opacity-100 2xl:opacity-100 duration-200">
+                              GitHub
+                            </span>
+                          </div>
+                          {/* Icon */}
+                          <div className="flex shrink-0 ml-2">
+                            <svg
+                              className={`w-3 h-3 shrink-0 ml-1 fill-current text-gray-400 dark:text-gray-500 ${open && 'rotate-180'}`}
+                              viewBox="0 0 12 12"
+                            >
+                              <path d="M5.9 11.4L.5 6l1.4-1.4 4 4 4-4L11.3 6z" />
+                            </svg>
+                          </div>
+                        </div>
+                      </a>
+                      <div className="lg:hidden lg:sidebar-expanded:block 2xl:block">
+                        <ul className={`pl-8 mt-1 ${!open && 'hidden'}`}>
+                          <li className="mb-1 last:mb-0">
+                            <SidebarLink href="/chat">
+                              <span className="text-sm font-medium lg:opacity-0 lg:sidebar-expanded:opacity-100 2xl:opacity-100 duration-200">
+                                AI Chat
+                              </span>
+                            </SidebarLink>
+                          </li>
+                          <li className="mb-1 last:mb-0">
+                            <SidebarLink href="/triage">
+                              <span className="text-sm font-medium lg:opacity-0 lg:sidebar-expanded:opacity-100 2xl:opacity-100 duration-200">
+                                AI Triage
+                              </span>
+                            </SidebarLink>
+                          </li>
+                          <li className="mb-1 last:mb-0">
+                            <SidebarLink href="/repos">
+                              <span className="text-sm font-medium lg:opacity-0 lg:sidebar-expanded:opacity-100 2xl:opacity-100 duration-200">
+                                Repositories
+                              </span>
+                            </SidebarLink>
+                          </li>
+                          <li className="mb-1 last:mb-0">
+                            <SidebarLink href="/assignments">
+                              <span className="text-sm font-medium lg:opacity-0 lg:sidebar-expanded:opacity-100 2xl:opacity-100 duration-200">
+                                Assignments
+                              </span>
+                            </SidebarLink>
+                          </li>
+                        </ul>
+                      </div>
+                    </>
+                  )
+                }}
+              </SidebarLinkGroup>
               {/* Settings */}
               <SidebarLinkGroup open={segments.includes('settings')}>
                 {(handleClick, open) => {

@@ -51,6 +51,9 @@ export async function GET(request: NextRequest) {
         issuesData = await getIssuesForRepo(user.accessToken, owner, repoName, state)
       } else {
         // Get issues across all repositories
+        if (!user.username) {
+          return NextResponse.json({ error: 'Username not available' }, { status: 400 })
+        }
         issuesData = await getIssuesForUser(user.accessToken, user.username, state)
       }
 
@@ -96,7 +99,18 @@ async function getIssuesForUser(accessToken: string, username: string, state: st
     })
 
     if (!reposResponse.ok) {
-      throw new Error(`GitHub API error: ${reposResponse.status}`)
+      const errorText = await reposResponse.text()
+      console.error('GitHub API error:', {
+        status: reposResponse.status,
+        statusText: reposResponse.statusText,
+        error: errorText
+      })
+      
+      if (reposResponse.status === 403) {
+        throw new Error('GitHub API access forbidden. Please re-authenticate with GitHub to refresh your permissions.')
+      }
+      
+      throw new Error(`GitHub API error: ${reposResponse.status} - ${reposResponse.statusText}`)
     }
 
     const repos = await reposResponse.json()

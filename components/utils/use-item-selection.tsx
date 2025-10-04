@@ -7,7 +7,7 @@ export const useItemSelection = (items: any[]) => {
   const { selectedItems, setSelectedItems } = useSelectedItems()
   const [isAllSelected, setIsAllSelected] = useState<boolean>(false)
 
-  const handleCheckboxChange = (id: number, checked: boolean) => {
+  const handleCheckboxChange = (id: string | number, checked: boolean) => {
     setIsAllSelected(false)
     if (checked) {
       setSelectedItems([...selectedItems, id])
