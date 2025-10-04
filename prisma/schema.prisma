@@ -24,7 +24,10 @@ model User {
   username      String?   @unique
   email         String?   @unique
   name          String?
-  avatarUrl     String?
+  image         String?   // NextAuth standard field for avatar
+  emailVerified DateTime? // NextAuth standard field for email verification
+  
+  // Additional GitHub-specific fields
   bio           String?
   
   // OAuth tokens

@@ -32,6 +32,11 @@ export function UserProfile() {
         <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
           {session.user.name || session.user.email}
         </span>
+        {session.user.username && (
+          <span className="text-xs text-gray-500 dark:text-gray-400">
+            @{session.user.username}
+          </span>
+        )}
         {session.user.email && session.user.name && (
           <span className="text-xs text-gray-500 dark:text-gray-400">
             {session.user.email}

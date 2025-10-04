@@ -1,8 +1,6 @@
-export const metadata = {
-  title: 'Dashboard - Mosaic',
-  description: 'Page description',
-}
+'use client'
 
+import { useSession } from 'next-auth/react'
 import FilterButton from '@/components/dropdown-filter'
 import Datepicker from '@/components/datepicker'
 import DashboardCard01 from './dashboard-card-01'
@@ -18,13 +16,27 @@ import DashboardCard10 from './dashboard-card-10'
 import DashboardCard11 from './dashboard-card-11'
 
 export default function Dashboard() {
+  const { data: session } = useSession()
+  
   return (
     <div className="px-4 sm:px-6 lg:px-8 py-8 w-full max-w-[96rem] mx-auto">
       {/* Dashboard actions */}
       <div className="sm:flex sm:justify-between sm:items-center mb-8">
         {/* Left: Title */}
         <div className="mb-4 sm:mb-0">
-          <h1 className="text-2xl md:text-3xl text-gray-800 dark:text-gray-100 font-bold">Dashboard</h1>
+          <h1 className="text-2xl md:text-3xl text-gray-800 dark:text-gray-100 font-bold">
+            Dashboard
+          </h1>
+          {session?.user && (
+            <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+              Welcome back, {session.user.name || session.user.username || session.user.email}! 👋
+              {session.user.username && (
+                <span className="ml-2 text-xs bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded-full">
+                  @{session.user.username}
+                </span>
+              )}
+            </p>
+          )}
         </div>
         {/* Right: Actions */}
         <div className="grid grid-flow-col sm:auto-cols-max justify-start sm:justify-end gap-2">

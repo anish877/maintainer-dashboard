@@ -54,6 +54,12 @@ export default function DropdownProfile({ align }: {
           {user?.email && user?.name && (
             <div className="text-xs text-gray-500 dark:text-gray-400 italic">{user.email}</div>
           )}
+          {user?.username && (
+            <div className="text-xs text-gray-500 dark:text-gray-400">@{user.username}</div>
+          )}
+          {user?.bio && (
+            <div className="text-xs text-gray-500 dark:text-gray-400 mt-1 line-clamp-2">{user.bio}</div>
+          )}
         </div>
         <MenuItems as="ul" className="focus:outline-hidden">
           <MenuItem as="li">
