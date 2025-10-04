@@ -18,7 +18,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    // Get user's GitHub access token
+    // Get user's GitHub access token and username
     const user = await prisma.user.findUnique({
       where: { id: session.user.id },
       select: { accessToken: true, username: true }
@@ -26,6 +26,42 @@ export async function GET(request: NextRequest) {
 
     if (!user?.accessToken) {
       return NextResponse.json({ error: 'GitHub access token not found' }, { status: 400 })
+    }
+
+    // Ensure username is available - fetch from GitHub if not in DB
+    let username = user.username
+    if (!username) {
+      console.log('🔍 [DEBUG] Username is null, fetching from GitHub API')
+      try {
+        const githubUserResponse = await fetch('https://api.github.com/user', {
+          headers: {
+            'Authorization': `Bearer ${user.accessToken}`,
+            'Accept': 'application/vnd.github.v3+json',
+            'User-Agent': 'GitHub-Dashboard'
+          }
+        })
+        
+        if (githubUserResponse.ok) {
+          const githubUser = await githubUserResponse.json()
+          username = githubUser.login
+          console.log('✅ [DEBUG] Fetched username from GitHub:', username)
+          
+          // Update the database with the username
+          await prisma.user.update({
+            where: { id: session.user.id },
+            data: { username: username }
+          })
+          console.log('✅ [DEBUG] Updated username in database')
+        } else {
+          console.log('❌ [DEBUG] Failed to fetch GitHub user data:', githubUserResponse.status)
+          return NextResponse.json({ error: 'Failed to fetch GitHub user data' }, { status: 400 })
+        }
+      } catch (error) {
+        console.error('❌ [DEBUG] Error fetching GitHub user:', error)
+        return NextResponse.json({ error: 'Failed to fetch GitHub user data' }, { status: 500 })
+      }
+    } else {
+      console.log('✅ [DEBUG] Using existing username from database:', username)
     }
 
     // Get query parameters
@@ -38,10 +74,10 @@ export async function GET(request: NextRequest) {
     if (repo) {
       // Get commits for specific repository
       const [owner, repoName] = repo.split('/')
-      commitsData = await getCommitsForRepo(user.accessToken, owner, repoName, days)
+      commitsData = await getCommitsForRepo(user.accessToken, username, owner, repoName, days)
     } else {
       // Get commits across all repositories
-      commitsData = await getCommitsForUser(user.accessToken, user.username, days)
+      commitsData = await getCommitsForUser(user.accessToken, username, days)
     }
 
     return NextResponse.json({ commits: commitsData })
@@ -72,6 +108,9 @@ async function getCommitsForUser(accessToken: string, username: string, days: nu
 
     const repos = await reposResponse.json()
     
+    console.log(`🔍 [DEBUG] Fetching commits for ${repos.length} repositories since ${days} days ago`)
+    console.log(`🔍 [DEBUG] Using username: ${username}`)
+    
     // Get commits from all repositories
     const commits: CommitData[] = []
     const now = new Date()
@@ -80,32 +119,46 @@ async function getCommitsForUser(accessToken: string, username: string, days: nu
     // Group commits by date
     const commitsByDate: Record<string, any[]> = {}
     
-    // Fetch commits from each repository (limit to avoid rate limits)
-    const reposToCheck = repos.slice(0, 10) // Limit to 10 most recent repos
-    
-    for (const repo of reposToCheck) {
+    // Fetch commits from ALL repositories (no arbitrary limits)
+    for (const repo of repos) {
       try {
-        const commitsResponse = await fetch(
-          `https://api.github.com/repos/${repo.full_name}/commits?since=${since}&per_page=100&author=${username}`, 
-          {
-            headers: {
-              'Authorization': `Bearer ${accessToken}`,
-              'Accept': 'application/vnd.github.v3+json',
-              'User-Agent': 'GitHub-Dashboard'
+        // Fetch commits with pagination to get all commits, not just first 100
+        let page = 1
+        let hasMore = true
+        
+        while (hasMore && page <= 5) { // Limit to 5 pages to avoid rate limits
+          const commitsResponse = await fetch(
+            `https://api.github.com/repos/${repo.full_name}/commits?since=${since}&per_page=100&page=${page}&author=${username}`, 
+            {
+              headers: {
+                'Authorization': `Bearer ${accessToken}`,
+                'Accept': 'application/vnd.github.v3+json',
+                'User-Agent': 'GitHub-Dashboard'
+              }
             }
-          }
-        )
+          )
 
-        if (commitsResponse.ok) {
-          const repoCommits = await commitsResponse.json()
-          
-          repoCommits.forEach((commit: any) => {
-            const date = commit.commit.author.date.split('T')[0]
-            if (!commitsByDate[date]) {
-              commitsByDate[date] = []
+          if (commitsResponse.ok) {
+            const repoCommits = await commitsResponse.json()
+            
+            repoCommits.forEach((commit: any) => {
+              const date = commit.commit.author.date.split('T')[0]
+              if (!commitsByDate[date]) {
+                commitsByDate[date] = []
+              }
+              commitsByDate[date].push(commit)
+            })
+            
+            // If we got less than 100 commits, we've reached the end
+            if (repoCommits.length < 100) {
+              hasMore = false
+            } else {
+              page++
             }
-            commitsByDate[date].push(commit)
-          })
+          } else {
+            console.warn(`Failed to fetch commits from ${repo.full_name} (page ${page}):`, commitsResponse.status)
+            hasMore = false
+          }
         }
       } catch (repoError) {
         console.warn(`Failed to fetch commits from ${repo.full_name}:`, repoError)
@@ -129,6 +182,9 @@ async function getCommitsForUser(accessToken: string, username: string, days: nu
       })
     }
 
+    const totalCommits = commits.reduce((sum, commit) => sum + commit.commits, 0)
+    console.log(`✅ [DEBUG] Total commits across all repos: ${totalCommits}`)
+
     return commits
   } catch (error) {
     console.error('Error fetching user commits:', error)
@@ -137,15 +193,15 @@ async function getCommitsForUser(accessToken: string, username: string, days: nu
   }
 }
 
-async function getCommitsForRepo(accessToken: string, owner: string, repo: string, days: number): Promise<CommitData[]> {
+async function getCommitsForRepo(accessToken: string, username: string, owner: string, repo: string, days: number): Promise<CommitData[]> {
   try {
     const commits: CommitData[] = []
     const now = new Date()
     const since = new Date(now.getTime() - days * 24 * 60 * 60 * 1000).toISOString()
 
-    // Get commits from the repository
+    // Get commits from the repository with username filtering
     const response = await fetch(
-      `https://api.github.com/repos/${owner}/${repo}/commits?since=${since}&per_page=100`, 
+      `https://api.github.com/repos/${owner}/${repo}/commits?since=${since}&per_page=100&author=${username}`, 
       {
         headers: {
           'Authorization': `Bearer ${accessToken}`,

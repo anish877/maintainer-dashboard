@@ -28,7 +28,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    // Get user's GitHub access token
+    // Get user's GitHub access token and username
     const user = await prisma.user.findUnique({
       where: { id: session.user.id },
       select: { accessToken: true, username: true }
@@ -36,6 +36,42 @@ export async function GET(request: NextRequest) {
 
     if (!user?.accessToken) {
       return NextResponse.json({ error: 'GitHub access token not found' }, { status: 400 })
+    }
+
+    // Ensure username is available - fetch from GitHub if not in DB
+    let username = user.username
+    if (!username) {
+      console.log('🔍 [DEBUG] Username is null, fetching from GitHub API')
+      try {
+        const githubUserResponse = await fetch('https://api.github.com/user', {
+          headers: {
+            'Authorization': `Bearer ${user.accessToken}`,
+            'Accept': 'application/vnd.github.v3+json',
+            'User-Agent': 'GitHub-Dashboard'
+          }
+        })
+        
+        if (githubUserResponse.ok) {
+          const githubUser = await githubUserResponse.json()
+          username = githubUser.login
+          console.log('✅ [DEBUG] Fetched username from GitHub:', username)
+          
+          // Update the database with the username
+          await prisma.user.update({
+            where: { id: session.user.id },
+            data: { username: username }
+          })
+          console.log('✅ [DEBUG] Updated username in database')
+        } else {
+          console.log('❌ [DEBUG] Failed to fetch GitHub user data:', githubUserResponse.status)
+          return NextResponse.json({ error: 'Failed to fetch GitHub user data' }, { status: 400 })
+        }
+      } catch (error) {
+        console.error('❌ [DEBUG] Error fetching GitHub user:', error)
+        return NextResponse.json({ error: 'Failed to fetch GitHub user data' }, { status: 500 })
+      }
+    } else {
+      console.log('✅ [DEBUG] Using existing username from database:', username)
     }
 
     // Fetch all repositories
@@ -106,37 +142,59 @@ export async function GET(request: NextRequest) {
       }))
     }
 
-    // Get commit count for each repository (simplified - using GitHub API)
+    // Get commit count for each repository (last 30 days for dashboard)
     try {
       let totalCommits = 0
-      const since = new Date(Date.now() - 365 * 24 * 60 * 60 * 1000).toISOString() // Last year
+      const since = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString() // Last 30 days
       
-      // Get commits from recent repositories (limit to avoid rate limits)
-      const reposToCheck = repos.slice(0, 20) // Limit to 20 most recent repos
+      console.log(`🔍 [DEBUG] Fetching commits for ${repos.length} repositories since ${since}`)
+      console.log(`🔍 [DEBUG] Using username: ${username}`)
       
-      for (const repo of reposToCheck) {
+      // Get commits from ALL repositories (no arbitrary limits)
+      for (const repo of repos) {
         try {
-          const commitsResponse = await fetch(
-            `https://api.github.com/repos/${repo.full_name}/commits?since=${since}&per_page=100&author=${user.username}`, 
-            {
-              headers: {
-                'Authorization': `Bearer ${user.accessToken}`,
-                'Accept': 'application/vnd.github.v3+json',
-                'User-Agent': 'GitHub-Dashboard'
+          // Fetch commits with pagination to get all commits, not just first 100
+          let repoCommits = 0
+          let page = 1
+          let hasMore = true
+          
+          while (hasMore && page <= 10) { // Limit to 10 pages to avoid infinite loops
+            const commitsResponse = await fetch(
+              `https://api.github.com/repos/${repo.full_name}/commits?since=${since}&per_page=100&page=${page}&author=${username}`, 
+              {
+                headers: {
+                  'Authorization': `Bearer ${user.accessToken}`,
+                  'Accept': 'application/vnd.github.v3+json',
+                  'User-Agent': 'GitHub-Dashboard'
+                }
               }
-            }
-          )
+            )
 
-          if (commitsResponse.ok) {
-            const repoCommits = await commitsResponse.json()
-            totalCommits += repoCommits.length
+            if (commitsResponse.ok) {
+              const commitsData = await commitsResponse.json()
+              repoCommits += commitsData.length
+              
+              // If we got less than 100 commits, we've reached the end
+              if (commitsData.length < 100) {
+                hasMore = false
+              } else {
+                page++
+              }
+            } else {
+              console.warn(`Failed to fetch commits from ${repo.full_name} (page ${page}):`, commitsResponse.status)
+              hasMore = false
+            }
           }
+          
+          totalCommits += repoCommits
+          console.log(`📊 [DEBUG] ${repo.full_name}: ${repoCommits} commits`)
         } catch (repoError) {
           console.warn(`Failed to fetch commits from ${repo.full_name}:`, repoError)
           // Continue with other repos
         }
       }
       
+      console.log(`✅ [DEBUG] Total commits across all repos: ${totalCommits}`)
       stats.totalCommits = totalCommits
     } catch (error) {
       console.log('Could not fetch contribution data:', error)

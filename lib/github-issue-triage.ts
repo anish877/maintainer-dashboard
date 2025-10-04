@@ -73,8 +73,8 @@ export interface LabelMappings {
 }
 
 export class GitHubIssueTriage {
-  private octokit: Octokit;
-  private config: TriageConfig;
+  protected octokit: Octokit;
+  protected config: TriageConfig;
 
   constructor(config: TriageConfig) {
     this.config = config;
@@ -111,7 +111,7 @@ export class GitHubIssueTriage {
   /**
    * Fetch issue details from GitHub
    */
-  private async fetchIssue(issueNumber: number) {
+  protected async fetchIssue(issueNumber: number) {
     const { data: issue } = await this.octokit.rest.issues.get({
       owner: this.config.owner,
       repo: this.config.repo,
@@ -286,7 +286,7 @@ export class GitHubIssueTriage {
   /**
    * Generate appropriate labels based on analysis
    */
-  private generateLabels(type: IssueType, priority: Priority, component: string, difficulty: Difficulty): string[] {
+  protected generateLabels(type: IssueType, priority: Priority, component: string, difficulty: Difficulty): string[] {
     const labels: string[] = [];
     
     // Add type label
@@ -315,7 +315,7 @@ export class GitHubIssueTriage {
   /**
    * Suggest assignees based on expertise mapping
    */
-  private suggestAssignees(component: string, type: IssueType): string[] {
+  protected suggestAssignees(component: string, type: IssueType): string[] {
     const availableExperts = this.config.teamExpertise.filter(
       expert => expert.availability === 'available'
     );
@@ -331,7 +331,7 @@ export class GitHubIssueTriage {
   /**
    * Apply labels to the issue
    */
-  private async applyLabels(issueNumber: number, labels: string[]): Promise<void> {
+  protected async applyLabels(issueNumber: number, labels: string[]): Promise<void> {
     if (labels.length === 0) return;
     
     await this.octokit.rest.issues.setLabels({

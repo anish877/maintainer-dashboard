@@ -508,7 +508,7 @@ Respond in JSON format with:
         failedTriages,
         averageConfidence,
         commonLabels: labelCounts,
-        suggestedAssignees: [...new Set(allAssignees)],
+        suggestedAssignees: Array.from(new Set(allAssignees)),
         highConfidenceIssues,
         lowConfidenceIssues,
         similarIssueClusters: similarClusters,

@@ -51,9 +51,23 @@ export async function POST(request: NextRequest) {
 
     console.log(`📝 Applying duplicate analysis for user ${session.user.id} on ${owner}/${repo}#${issueNumber}`);
 
-    // Initialize GitHub client using user's session
+    // Get user's GitHub access token from database
+    const { prisma } = await import('@/lib/prisma');
+    const user = await prisma.user.findUnique({
+      where: { id: session.user.id },
+      select: { accessToken: true }
+    });
+
+    if (!user?.accessToken) {
+      return NextResponse.json(
+        { error: 'No GitHub access token found. Please re-authenticate with GitHub.' },
+        { status: 401 }
+      );
+    }
+
+    // Initialize GitHub client using user's token
     const octokit = new Octokit({
-      auth: session.accessToken,
+      auth: user.accessToken,
     });
 
     let commentBody = '';
