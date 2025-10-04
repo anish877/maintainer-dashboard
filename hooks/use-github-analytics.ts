@@ -206,7 +206,7 @@ export function useGitHubIssues(repo?: string, state: string = 'all') {
         setLoading(true)
         setError(null)
 
-        const url = `/api/github/issues${repo ? `?repo=${repo}` : ''}&state=${state}`
+        const url = `/api/github/issues?${repo ? `repo=${repo}&` : ''}state=${state}`
         const response = await fetch(url)
 
         if (!response.ok) {
@@ -218,7 +218,9 @@ export function useGitHubIssues(repo?: string, state: string = 'all') {
         setIssues(data.issues)
       } catch (err) {
         console.error('Error fetching issues:', err)
-        setError(err instanceof Error ? err.message : 'Failed to fetch issues')
+        const errorMessage = err instanceof Error ? err.message : 'Failed to fetch issues'
+        setError(errorMessage)
+        
         // Set default empty data instead of null to prevent UI crashes
         setIssues({
           totalIssues: 0,

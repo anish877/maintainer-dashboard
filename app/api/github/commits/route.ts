@@ -57,36 +57,75 @@ export async function GET(request: NextRequest) {
 
 async function getCommitsForUser(accessToken: string, username: string, days: number): Promise<CommitData[]> {
   try {
-    // Use GitHub Contributions API for user-wide data
-    const response = await fetch(`https://github-contributions-api.vercel.app/api/v1/${username}`, {
+    // Get user's repositories first
+    const reposResponse = await fetch(`https://api.github.com/user/repos?type=all&per_page=100&sort=updated`, {
       headers: {
+        'Authorization': `Bearer ${accessToken}`,
+        'Accept': 'application/vnd.github.v3+json',
         'User-Agent': 'GitHub-Dashboard'
       }
     })
 
-    if (!response.ok) {
-      throw new Error(`Contributions API error: ${response.status}`)
+    if (!reposResponse.ok) {
+      throw new Error(`GitHub API error: ${reposResponse.status}`)
     }
 
-    const data = await response.json()
+    const repos = await reposResponse.json()
     
-    // Transform the data to our format
+    // Get commits from all repositories
     const commits: CommitData[] = []
     const now = new Date()
+    const since = new Date(now.getTime() - days * 24 * 60 * 60 * 1000).toISOString()
     
+    // Group commits by date
+    const commitsByDate: Record<string, any[]> = {}
+    
+    // Fetch commits from each repository (limit to avoid rate limits)
+    const reposToCheck = repos.slice(0, 10) // Limit to 10 most recent repos
+    
+    for (const repo of reposToCheck) {
+      try {
+        const commitsResponse = await fetch(
+          `https://api.github.com/repos/${repo.full_name}/commits?since=${since}&per_page=100&author=${username}`, 
+          {
+            headers: {
+              'Authorization': `Bearer ${accessToken}`,
+              'Accept': 'application/vnd.github.v3+json',
+              'User-Agent': 'GitHub-Dashboard'
+            }
+          }
+        )
+
+        if (commitsResponse.ok) {
+          const repoCommits = await commitsResponse.json()
+          
+          repoCommits.forEach((commit: any) => {
+            const date = commit.commit.author.date.split('T')[0]
+            if (!commitsByDate[date]) {
+              commitsByDate[date] = []
+            }
+            commitsByDate[date].push(commit)
+          })
+        }
+      } catch (repoError) {
+        console.warn(`Failed to fetch commits from ${repo.full_name}:`, repoError)
+        // Continue with other repos
+      }
+    }
+    
+    // Generate data for each day
     for (let i = days - 1; i >= 0; i--) {
       const date = new Date(now)
       date.setDate(date.getDate() - i)
       const dateStr = date.toISOString().split('T')[0]
       
-      // Find contribution for this date
-      const contribution = data.contributions?.find((c: any) => c.date === dateStr)
+      const dayCommits = commitsByDate[dateStr] || []
       
       commits.push({
         date: dateStr,
-        commits: contribution?.contributionCount || 0,
-        additions: 0, // Not available from this API
-        deletions: 0  // Not available from this API
+        commits: dayCommits.length,
+        additions: 0, // Would need to fetch commit details for this
+        deletions: 0  // Would need to fetch commit details for this
       })
     }
 

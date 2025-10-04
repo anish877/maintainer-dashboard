@@ -106,20 +106,41 @@ export async function GET(request: NextRequest) {
       }))
     }
 
-    // Get commit count for each repository (simplified - using contribution graph)
+    // Get commit count for each repository (simplified - using GitHub API)
     try {
-      const contributionResponse = await fetch(`https://github-contributions-api.vercel.app/api/v1/${user.username}`, {
-        headers: {
-          'User-Agent': 'GitHub-Dashboard'
-        }
-      })
+      let totalCommits = 0
+      const since = new Date(Date.now() - 365 * 24 * 60 * 60 * 1000).toISOString() // Last year
       
-      if (contributionResponse.ok) {
-        const contributionData = await contributionResponse.json()
-        stats.totalCommits = contributionData.totalContributions || 0
+      // Get commits from recent repositories (limit to avoid rate limits)
+      const reposToCheck = repos.slice(0, 20) // Limit to 20 most recent repos
+      
+      for (const repo of reposToCheck) {
+        try {
+          const commitsResponse = await fetch(
+            `https://api.github.com/repos/${repo.full_name}/commits?since=${since}&per_page=100&author=${user.username}`, 
+            {
+              headers: {
+                'Authorization': `Bearer ${user.accessToken}`,
+                'Accept': 'application/vnd.github.v3+json',
+                'User-Agent': 'GitHub-Dashboard'
+              }
+            }
+          )
+
+          if (commitsResponse.ok) {
+            const repoCommits = await commitsResponse.json()
+            totalCommits += repoCommits.length
+          }
+        } catch (repoError) {
+          console.warn(`Failed to fetch commits from ${repo.full_name}:`, repoError)
+          // Continue with other repos
+        }
       }
+      
+      stats.totalCommits = totalCommits
     } catch (error) {
       console.log('Could not fetch contribution data:', error)
+      stats.totalCommits = 0
     }
 
     return NextResponse.json({ stats })

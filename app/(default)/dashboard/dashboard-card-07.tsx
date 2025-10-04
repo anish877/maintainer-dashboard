@@ -78,27 +78,27 @@ export default function DashboardCard07() {
                     <div className="flex items-center">
                       <div className="shrink-0 mr-2 sm:mr-3">
                         <div className="w-8 h-8 bg-gray-200 dark:bg-gray-700 rounded-full flex items-center justify-center">
-                          {getActivityIcon(activity.type)}
+                          {getActivityIcon(activity.type || 'Unknown')}
                         </div>
                       </div>
-                      <div className="text-gray-800 dark:text-gray-100">{activity.description}</div>
+                      <div className="text-gray-800 dark:text-gray-100">{activity.description || 'No description'}</div>
                     </div>
                   </td>
                   <td className="p-2">
-                    <div className="text-center text-gray-600 dark:text-gray-400">{activity.repo}</div>
+                    <div className="text-center text-gray-600 dark:text-gray-400">{activity.repo || 'Unknown'}</div>
                   </td>
                   <td className="p-2">
                     <div className="text-center">
                       <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                        getActivityBadgeColor(activity.type)
+                        getActivityBadgeColor(activity.type || 'Unknown')
                       }`}>
-                        {activity.type.replace('Event', '')}
+                        {activity.type?.replace('Event', '') || 'Unknown'}
                       </span>
                     </div>
                   </td>
                   <td className="p-2">
                     <div className="text-center text-gray-500 dark:text-gray-400">
-                      {new Date(activity.date).toLocaleDateString()}
+                      {activity.date ? new Date(activity.date).toLocaleDateString() : 'Unknown date'}
                     </div>
                   </td>
                 </tr>

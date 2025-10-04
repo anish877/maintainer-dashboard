@@ -35,7 +35,7 @@ export async function GET(request: NextRequest) {
     })
 
     if (!user?.accessToken) {
-      return NextResponse.json({ error: 'GitHub access token not found' }, { status: 400 })
+      return NextResponse.json({ error: 'GitHub access token not found. Please sign in again.' }, { status: 400 })
     }
 
     const { searchParams } = new URL(request.url)
