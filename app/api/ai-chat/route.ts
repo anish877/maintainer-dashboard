@@ -11,7 +11,7 @@ export async function POST(request: NextRequest) {
       stream = false 
     } = await request.json()
 
-    if (!process.env.OPEN_AI_KEY) {
+    if (!process.env.OPENAI_API_KEY) {
       return NextResponse.json(
         { error: 'OpenAI API key not configured' },
         { status: 500 }

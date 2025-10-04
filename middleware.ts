@@ -15,6 +15,8 @@ export const config = {
   matcher: [
     // Protect all dashboard routes
     "/dashboard/:path*",
+    // Protect assignments route
+    "/assignments/:path*",
     // Protect other authenticated routes
     "/settings/:path*",
     "/profile/:path*",
