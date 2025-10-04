@@ -1,5 +1,6 @@
 import Sidebar from '@/components/ui/sidebar'
 import Header from '@/components/ui/header'
+import { ProtectedRoute } from '@/components/protected-route'
 
 export default function DefaultLayout({
   children,
@@ -7,23 +8,25 @@ export default function DefaultLayout({
   children: React.ReactNode
 }) {  
   return (
-    <div className="flex h-[100dvh] overflow-hidden">
+    <ProtectedRoute>
+      <div className="flex h-[100dvh] overflow-hidden">
 
-      {/* Sidebar */}
-      <Sidebar />
+        {/* Sidebar */}
+        <Sidebar />
 
-      {/* Content area */}
-      <div className="relative flex flex-col flex-1 overflow-y-auto overflow-x-hidden">
+        {/* Content area */}
+        <div className="relative flex flex-col flex-1 overflow-y-auto overflow-x-hidden">
 
-        {/*  Site header */}
-        <Header />
+          {/*  Site header */}
+          <Header />
 
-        <main className="grow [&>*:first-child]:scroll-mt-16">
-          {children}
-        </main>        
+          <main className="grow [&>*:first-child]:scroll-mt-16">
+            {children}
+          </main>        
+
+        </div>
 
       </div>
-
-    </div>
+    </ProtectedRoute>
   )
 }

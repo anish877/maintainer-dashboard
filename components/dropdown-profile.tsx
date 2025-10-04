@@ -3,17 +3,36 @@
 import Link from 'next/link'
 import Image from 'next/image'
 import { Menu, MenuButton, MenuItems, MenuItem, Transition } from '@headlessui/react'
+import { useSession, signOut } from 'next-auth/react'
 import UserAvatar from '@/public/images/user-avatar-32.png'
 
 export default function DropdownProfile({ align }: {
   align?: 'left' | 'right'
 }) {
+  const { data: session } = useSession()
+
+  const handleSignOut = async () => {
+    await signOut({ callbackUrl: '/signin' })
+  }
+
+  const user = session?.user
+  const userImage = user?.image || UserAvatar
+  const userName = user?.name || user?.email || 'User'
+
   return (
     <Menu as="div" className="relative inline-flex">
       <MenuButton className="inline-flex justify-center items-center group">
-        <Image className="w-8 h-8 rounded-full" src={UserAvatar} width={32} height={32} alt="User" />
+        <Image 
+          className="w-8 h-8 rounded-full" 
+          src={userImage} 
+          width={32} 
+          height={32} 
+          alt={userName} 
+        />
         <div className="flex items-center truncate">
-          <span className="truncate ml-2 text-sm font-medium text-gray-600 dark:text-gray-100 group-hover:text-gray-800 dark:group-hover:text-white">Acme Inc.</span>
+          <span className="truncate ml-2 text-sm font-medium text-gray-600 dark:text-gray-100 group-hover:text-gray-800 dark:group-hover:text-white">
+            {userName}
+          </span>
           <svg className="w-3 h-3 shrink-0 ml-1 fill-current text-gray-400 dark:text-gray-500" viewBox="0 0 12 12">
             <path d="M5.9 11.4L.5 6l1.4-1.4 4 4 4-4L11.3 6z" />
           </svg>
@@ -31,19 +50,24 @@ export default function DropdownProfile({ align }: {
         leaveTo="opacity-0"
       >
         <div className="pt-0.5 pb-2 px-3 mb-1 border-b border-gray-200 dark:border-gray-700/60">
-          <div className="font-medium text-gray-800 dark:text-gray-100">Acme Inc.</div>
-          <div className="text-xs text-gray-500 dark:text-gray-400 italic">Administrator</div>
+          <div className="font-medium text-gray-800 dark:text-gray-100">{userName}</div>
+          {user?.email && user?.name && (
+            <div className="text-xs text-gray-500 dark:text-gray-400 italic">{user.email}</div>
+          )}
         </div>
         <MenuItems as="ul" className="focus:outline-hidden">
           <MenuItem as="li">
-              <Link className="font-medium text-sm flex items-center py-1 px-3 text-violet-500" href="/settings/account">
+              <Link className="font-medium text-sm flex items-center py-1 px-3 text-violet-500 hover:bg-gray-50 dark:hover:bg-gray-700/50" href="/settings/account">
                 Settings
               </Link>
           </MenuItem>
           <MenuItem as="li">
-            <Link className="font-medium text-sm flex items-center py-1 px-3 text-violet-500" href="#0">
+            <button 
+              onClick={handleSignOut}
+              className="w-full text-left font-medium text-sm flex items-center py-1 px-3 text-violet-500 hover:bg-gray-50 dark:hover:bg-gray-700/50"
+            >
               Sign Out
-            </Link>
+            </button>
           </MenuItem>
         </MenuItems>
       </Transition>
