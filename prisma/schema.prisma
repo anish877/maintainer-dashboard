@@ -642,6 +642,122 @@ enum ScrapedStatus {
 }
 
 // ================================
+// AI AUTO-SCRAPER SYSTEM
+// ================================
+
+model ScrapedPost {
+  id              String   @id @default(cuid())
+  source          String   // "reddit", "stackoverflow", "twitter", "github_issues"
+  sourceUrl       String   @unique
+  sourceId        String?  // Platform-specific ID
+  
+  // Content
+  title           String
+  content         String   @db.Text
+  contentHtml     String?  @db.Text  // Store raw HTML for re-processing
+  author          String?
+  authorUrl       String?
+  
+  // Metadata
+  upvotes         Int?
+  commentCount    Int?
+  tags            String[]
+  postedAt        DateTime?
+  scrapedAt       DateTime @default(now())
+  
+  // Repository-specific scraping
+  targetRepository String? // "owner/repo" - which repo this was scraped for
+  scrapeKeywords  String[] // Keywords used for this scrape
+  
+  // Processing status
+  processed       Boolean  @default(false)
+  processingError String?  @db.Text
+  retryCount      Int      @default(0)
+  
+  // Relations
+  processedIssue  ProcessedIssue?
+  
+  @@index([source, processed])
+  @@index([scrapedAt])
+  @@index([sourceId])
+  @@index([targetRepository])
+}
+
+model ProcessedIssue {
+  id              String   @id @default(cuid())
+  scrapedPostId   String   @unique
+  scrapedPost     ScrapedPost @relation(fields: [scrapedPostId], references: [id], onDelete: Cascade)
+  
+  // AI Classification
+  type            String   // "bug", "feature_request", "question", "documentation"
+  confidence      Float    // 0.0 to 1.0
+  summary         String   @db.Text
+  technicalDetails String? @db.Text
+  severity        String   // "critical", "high", "medium", "low", "info"
+  suggestedLabels String[]
+  affectedArea    String?  // "ui", "api", "database", "auth", etc.
+  
+  // AI Context
+  aiModel         String   @default("gpt-4o-mini")
+  aiTokensUsed    Int?
+  aiPromptVersion String   @default("v1")
+  
+  // Duplication Detection
+  isDuplicate     Boolean  @default(false)
+  duplicateOfId   String?
+  duplicateScore  Float?   // Similarity score 0.0-1.0
+  embedding       String?  @db.Text // JSON array of embedding vector
+  
+  // GitHub Integration
+  githubIssueId   Int?     @unique
+  githubUrl       String?
+  githubLabels    String[]
+  
+  // Workflow
+  status          String   @default("pending") 
+  // "pending", "approved", "rejected", "duplicate", "synced_to_github"
+  reviewedAt      DateTime?
+  reviewedBy      String?
+  
+  // Analytics
+  userImpact      Int?     // Estimated # of affected users
+  sentimentScore  Float?   // -1.0 (negative) to 1.0 (positive)
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  @@index([status])
+  @@index([type, severity])
+  @@index([isDuplicate])
+  @@index([createdAt])
+}
+
+model ScraperRun {
+  id          String   @id @default(cuid())
+  source      String
+  status      String   // "running", "success", "failed"
+  itemsFound  Int      @default(0)
+  itemsNew    Int      @default(0)
+  itemsFailed Int      @default(0)
+  duration    Int?     // milliseconds
+  error       String?  @db.Text
+  startedAt   DateTime @default(now())
+  completedAt DateTime?
+  
+  @@index([source, startedAt])
+}
+
+model FeedbackLoop {
+  id              String   @id @default(cuid())
+  processedIssueId String
+  feedbackType    String   // "correct", "incorrect", "duplicate_missed", "severity_wrong"
+  notes           String?  @db.Text
+  createdAt       DateTime @default(now())
+  
+  @@index([processedIssueId])
+}
+
+// ================================
 // ANALYTICS
 // ================================
 
