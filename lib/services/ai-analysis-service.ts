@@ -1,39 +1,33 @@
-import OpenAI from 'openai'
+import { AIClient } from '@/lib/ai-client'
 
 export class AIAnalysisService {
-  private openai: OpenAI
+  private aiClient: AIClient
 
   constructor() {
-    this.openai = new OpenAI({
-      apiKey: process.env.OPENAI_API_KEY
-    })
+    this.aiClient = new AIClient()
   }
 
   async analyzeComment(commentBody: string) {
     try {
-      const response = await this.openai.chat.completions.create({
+      const systemPrompt = `Analyze this GitHub issue comment for work progress indicators. 
+      Return JSON with:
+      {
+        "hasWork": boolean,
+        "workType": "coding" | "research" | "planning" | "blocked" | "waiting" | "testing" | "documentation",
+        "confidence": number (0-1),
+        "isBlocked": boolean,
+        "nextSteps": string,
+        "sentiment": "positive" | "neutral" | "negative",
+        "urgency": "low" | "medium" | "high"
+      }`
+
+      const response = await this.aiClient.chat(commentBody, systemPrompt, {
         model: 'gpt-4',
-        messages: [{
-          role: 'system',
-          content: `Analyze this GitHub issue comment for work progress indicators. 
-          Return JSON with:
-          {
-            "hasWork": boolean,
-            "workType": "coding" | "research" | "planning" | "blocked" | "waiting" | "testing" | "documentation",
-            "confidence": number (0-1),
-            "isBlocked": boolean,
-            "nextSteps": string,
-            "sentiment": "positive" | "neutral" | "negative",
-            "urgency": "low" | "medium" | "high"
-          }`
-        }, {
-          role: 'user',
-          content: commentBody
-        }],
-        temperature: 0.3
+        temperature: 0.3,
+        maxTokens: 500
       })
 
-      const analysis = JSON.parse(response.choices[0].message.content || '{}')
+      const analysis = JSON.parse(response.text || '{}')
       
       // Validate the response
       return {
@@ -81,29 +75,25 @@ export class AIAnalysisService {
         .map(comment => comment.body)
         .join('\n\n---\n\n')
 
-      const response = await this.openai.chat.completions.create({
+      const systemPrompt = `Analyze this GitHub issue discussion for overall work progress. 
+      Consider multiple comments and their context.
+      Return JSON with:
+      {
+        "isActive": boolean,
+        "workType": string,
+        "confidence": number (0-1),
+        "isBlocked": boolean,
+        "progress": string,
+        "recommendations": string[]
+      }`
+
+      const response = await this.aiClient.chat(combinedText, systemPrompt, {
         model: 'gpt-4',
-        messages: [{
-          role: 'system',
-          content: `Analyze this GitHub issue discussion for overall work progress. 
-          Consider multiple comments and their context.
-          Return JSON with:
-          {
-            "isActive": boolean,
-            "workType": string,
-            "confidence": number (0-1),
-            "isBlocked": boolean,
-            "progress": string,
-            "recommendations": string[]
-          }`
-        }, {
-          role: 'user',
-          content: combinedText
-        }],
-        temperature: 0.3
+        temperature: 0.3,
+        maxTokens: 800
       })
 
-      const analysis = JSON.parse(response.choices[0].message.content || '{}')
+      const analysis = JSON.parse(response.text || '{}')
       
       return {
         isActive: analysis.isActive || false,
@@ -141,27 +131,23 @@ export class AIAnalysisService {
         .map(comment => comment.body)
         .join('\n\n')
 
-      const response = await this.openai.chat.completions.create({
+      const systemPrompt = `Analyze if this GitHub issue is blocked or waiting for something.
+      Look for keywords like: "waiting", "blocked", "need help", "stuck", "can't proceed", "depends on", "pending".
+      Return JSON with:
+      {
+        "isBlocked": boolean,
+        "confidence": number (0-1),
+        "reason": string,
+        "blockingFactors": string[]
+      }`
+
+      const response = await this.aiClient.chat(combinedText, systemPrompt, {
         model: 'gpt-4',
-        messages: [{
-          role: 'system',
-          content: `Analyze if this GitHub issue is blocked or waiting for something.
-          Look for keywords like: "waiting", "blocked", "need help", "stuck", "can't proceed", "depends on", "pending".
-          Return JSON with:
-          {
-            "isBlocked": boolean,
-            "confidence": number (0-1),
-            "reason": string,
-            "blockingFactors": string[]
-          }`
-        }, {
-          role: 'user',
-          content: combinedText
-        }],
-        temperature: 0.3
+        temperature: 0.3,
+        maxTokens: 600
       })
 
-      const analysis = JSON.parse(response.choices[0].message.content || '{}')
+      const analysis = JSON.parse(response.text || '{}')
       
       return {
         isBlocked: analysis.isBlocked || false,
@@ -183,7 +169,7 @@ export class AIAnalysisService {
     }
   }
 
-  private async getRecentComments(assignment: any) {
+  private async getRecentComments(assignment: any): Promise<Array<{ body: string }>> {
     // This would typically fetch from GitHub API
     // For now, return empty array - will be implemented with GitHub API integration
     return []

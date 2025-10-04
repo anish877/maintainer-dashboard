@@ -38,11 +38,19 @@ export default function AssignmentsContent() {
   })
 
   useEffect(() => {
+    // Only fetch assignments when session is ready
+    if (status === 'loading') return
     fetchAssignments()
-  }, [filters])
+  }, [filters, status])
 
   const fetchAssignments = async () => {
     try {
+      console.log('🔍 Fetching assignments...', { 
+        sessionStatus: status, 
+        hasSession: !!session,
+        userId: session?.user?.id 
+      })
+      
       setLoading(true)
       setError(null)
       
@@ -51,16 +59,27 @@ export default function AssignmentsContent() {
       if (filters.repositoryId) params.append('repositoryId', filters.repositoryId)
       if (filters.assigneeId) params.append('assigneeId', filters.assigneeId)
       
-      const response = await fetch(`/api/assignments?${params.toString()}`)
+      const url = `/api/assignments?${params.toString()}`
+      console.log('🔍 Making request to:', url)
+      
+      const response = await fetch(url)
+      console.log('🔍 Response status:', response.status)
       
       if (!response.ok) {
-        throw new Error('Failed to fetch assignments')
+        if (response.status === 401) {
+          console.log('❌ Authentication required')
+          setError('Please sign in to view assignments')
+          return
+        }
+        console.log('❌ Request failed with status:', response.status)
+        throw new Error(`Failed to fetch assignments: ${response.status}`)
       }
       
       const data = await response.json()
-      setAssignments(data.assignments)
+      console.log('✅ Assignments fetched:', data.assignments?.length || 0)
+      setAssignments(data.assignments || [])
     } catch (err: any) {
-      console.error('Error fetching assignments:', err)
+      console.error('❌ Error fetching assignments:', err)
       setError(err.message)
     } finally {
       setLoading(false)
@@ -97,6 +116,27 @@ export default function AssignmentsContent() {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-violet-500"></div>
+      </div>
+    )
+  }
+
+  if (!session) {
+    return (
+      <div className="px-4 sm:px-6 lg:px-8 py-8 w-full max-w-[96rem] mx-auto">
+        <div className="text-center">
+          <h1 className="text-2xl md:text-3xl text-gray-800 dark:text-gray-100 font-bold mb-4">
+            Fork-Aware Cookie Licking Detection
+          </h1>
+          <p className="text-lg text-gray-600 dark:text-gray-400 mb-8">
+            Please sign in with GitHub to access assignment monitoring.
+          </p>
+          <a 
+            href="/signin"
+            className="btn bg-violet-500 hover:bg-violet-600 text-white"
+          >
+            Sign in with GitHub
+          </a>
+        </div>
       </div>
     )
   }

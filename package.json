@@ -16,7 +16,7 @@
     "@ai-sdk/openai": "^2.0.42",
     "@auth/prisma-adapter": "^2.10.0",
     "@headlessui/react": "^2.2.0",
-    "@octokit/rest": "^20.0.2",
+    "@octokit/rest": "^20.1.2",
     "@prisma/client": "^6.16.3",
     "@radix-ui/react-popover": "^1.1.5",
     "@types/node": "^22.13.0",

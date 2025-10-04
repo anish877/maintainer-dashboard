@@ -46,6 +46,10 @@ export default function AssignmentRow({
     onCheckboxChange(assignment.id, e.target.checked)
   }
 
+  const handleAutomatedAction = (action: string) => {
+    onAssignmentAction(action, assignment.id)
+  }
+
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString()
   }
@@ -147,6 +151,18 @@ export default function AssignmentRow({
               className="text-blue-600 hover:text-blue-700 text-sm"
             >
               Extend
+            </button>
+            <button
+              onClick={() => handleAutomatedAction('remove_from_issue')}
+              className="text-red-600 hover:text-red-700 text-sm"
+            >
+              Remove
+            </button>
+            <button
+              onClick={() => handleAutomatedAction('send_reminder')}
+              className="text-orange-600 hover:text-orange-700 text-sm"
+            >
+              Remind
             </button>
             <button
               className={`text-gray-400 hover:text-gray-500 dark:text-gray-500 dark:hover:text-gray-400 ${detailsOpen && 'rotate-180'}`}

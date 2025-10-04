@@ -3,8 +3,13 @@ export const metadata = {
   description: 'Monitor GitHub issue assignments and detect work in forks',
 }
 
+import { SelectedItemsProvider } from '@/app/selected-items-context'
 import AssignmentsContent from './assignments-content'
 
 export default function Assignments() {
-  return <AssignmentsContent />
+  return (
+    <SelectedItemsProvider>
+      <AssignmentsContent />
+    </SelectedItemsProvider>
+  )
 }
