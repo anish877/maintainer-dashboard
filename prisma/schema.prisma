@@ -52,6 +52,7 @@ model User {
   teamMembers   TeamMember[]
   notifications UserNotification[]
   activities    ActivityLog[]
+  assignments   Assignment[]
   
   @@index([githubId])
   @@index([username])
@@ -140,6 +141,8 @@ model Repository {
   contributors    Contributor[]
   scraperSources  ScraperSource[]
   analytics       RepositoryAnalytics[]
+  assignments     Assignment[]
+  forkCaches      ForkCache[]
   
   @@index([githubId])
   @@index([fullName])
@@ -745,4 +748,129 @@ model ActivityLog {
   
   @@index([userId, createdAt])
   @@index([entityType, entityId])
+}
+
+// ================================
+// FORK-AWARE COOKIE LICKING DETECTION
+// ================================
+
+model Assignment {
+  id              String   @id @default(cuid())
+  repositoryId    String
+  repositoryName  String
+  issueNumber     Int
+  assigneeId      String
+  assigneeLogin   String
+  assignedAt      DateTime
+  lastActivityAt  DateTime
+  status          AssignmentStatus
+  forkUrl         String?
+  forkOwner       String?
+  forkBranch      String?
+  aiAnalysis      Json?    // Store AI analysis results
+  isWhitelisted   Boolean  @default(false)
+  manualOverride  Boolean  @default(false)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  // Relations
+  repository      Repository @relation(fields: [repositoryId], references: [id])
+  assignee        User       @relation(fields: [assigneeId], references: [id])
+  activities      AssignmentActivity[]
+  notifications   AssignmentNotification[]
+  
+  @@unique([repositoryId, issueNumber, assigneeId])
+  @@index([repositoryId])
+  @@index([assigneeId])
+  @@index([status])
+  @@index([lastActivityAt])
+}
+
+model AssignmentActivity {
+  id              String   @id @default(cuid())
+  assignmentId    String
+  activityType    AssignmentActivityType
+  source          ActivitySource
+  commitSha       String?
+  commitMessage   String?
+  timestamp       DateTime
+  metadata        Json?
+  
+  // Relations
+  assignment      Assignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+  
+  @@index([assignmentId, timestamp])
+  @@index([activityType])
+  @@index([source])
+}
+
+model ForkCache {
+  id              String   @id @default(cuid())
+  repositoryId    String
+  forkOwner       String
+  forkId          String
+  forkName        String
+  defaultBranch   String
+  isPrivate       Boolean
+  lastChecked     DateTime
+  expiresAt       DateTime
+  
+  // Relations
+  repository      Repository @relation(fields: [repositoryId], references: [id])
+  
+  @@unique([repositoryId, forkOwner])
+  @@index([expiresAt])
+}
+
+model AssignmentNotification {
+  id              String   @id @default(cuid())
+  assignmentId    String
+  type            AssignmentNotificationType
+  title           String
+  message         String   @db.Text
+  metadata        Json?
+  priority        NotificationPriority @default(NORMAL)
+  isRead          Boolean  @default(false)
+  readAt          DateTime?
+  createdAt       DateTime @default(now())
+  
+  // Relations
+  assignment      Assignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+  
+  @@index([assignmentId, isRead])
+  @@index([createdAt])
+}
+
+enum AssignmentStatus {
+  ACTIVE
+  WARNING
+  ALERT
+  AUTO_UNASSIGNED
+  UNKNOWN
+  MANUAL_OVERRIDE
+}
+
+enum AssignmentActivityType {
+  ISSUE_COMMENT
+  PULL_REQUEST
+  PUSH
+  FORK_COMMIT
+  MANUAL_UPDATE
+  AI_ANALYSIS
+}
+
+enum ActivitySource {
+  MAIN_REPO
+  FORK
+  MANUAL
+  AI
+}
+
+enum AssignmentNotificationType {
+  WARNING_REMINDER
+  ALERT_NOTIFICATION
+  AUTO_UNASSIGNED
+  MANUAL_OVERRIDE
+  FORK_ACTIVITY_DETECTED
+  AI_ANALYSIS_UPDATE
 }
