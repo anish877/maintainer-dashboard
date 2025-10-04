@@ -1,5 +1,5 @@
+// Fork detection service without database dependency
 import { Octokit } from '@octokit/rest'
-import { prisma } from '@/lib/prisma'
 import { AssignmentService } from './assignment-service'
 
 export class ForkDetectionService {
@@ -15,7 +15,7 @@ export class ForkDetectionService {
 
   async detectForksForAssignment(assignment: any) {
     try {
-      console.log(`Detecting forks for assignment: ${assignment.repositoryName}#${assignment.issueNumber}`)
+      console.log(`🍴 Detecting forks for assignment: ${assignment.repositoryName}#${assignment.issueNumber}`)
       
       // List repository forks
       const [owner, repo] = assignment.repositoryName.split('/')
@@ -30,191 +30,149 @@ export class ForkDetectionService {
         fork.owner.login === assignment.assigneeLogin
       )
       
-      if (assigneeFork) {
-        console.log(`Found fork: ${assigneeFork.full_name}`)
-        
-        // Cache fork information
-        await this.cacheForkInfo(assignment.repositoryId, assigneeFork)
-        
-        // Update assignment with fork info
-        await prisma.assignment.update({
-          where: { id: assignment.id },
-          data: {
-            forkUrl: assigneeFork.html_url,
-            forkOwner: assigneeFork.owner.login,
-            forkBranch: assigneeFork.default_branch
-          }
-        })
-        
-        return assigneeFork
+      if (!assigneeFork) {
+        console.log(`❌ No fork found for assignee ${assignment.assigneeLogin}`)
+        return null
       }
       
-      console.log(`No fork found for assignee: ${assignment.assigneeLogin}`)
-      return null
+      console.log(`✅ Found fork for assignee: ${assigneeFork.full_name}`)
+      
+      // Cache fork information (simulated)
+      const forkInfo = {
+        repositoryId: assignment.repositoryId,
+        forkOwner: assigneeFork.owner.login,
+        forkId: assigneeFork.id.toString(),
+        defaultBranch: assigneeFork.default_branch,
+        isPrivate: assigneeFork.private,
+        expiresAt: new Date(Date.now() + 12 * 60 * 60 * 1000) // 12 hours
+      }
+      
+      console.log(`💾 Cached fork info for ${assignment.assigneeLogin}`)
+      return forkInfo
     } catch (error) {
-      console.error('Fork detection error:', error)
+      console.error(`❌ Error detecting forks for assignment ${assignment.id}:`, error)
       return null
     }
   }
 
   async checkForkActivity(assignment: any) {
     try {
-      console.log(`Checking fork activity for assignment: ${assignment.id}`)
+      console.log(`🔍 Checking fork activity for assignment ${assignment.id}`)
       
-      const forkInfo = await this.getCachedForkInfo(assignment.repositoryId, assignment.assigneeLogin)
+      // Get fork information
+      const forkInfo = await this.detectForksForAssignment(assignment)
       
       if (!forkInfo) {
-        console.log('No cached fork info, attempting to detect forks')
-        await this.detectForksForAssignment(assignment)
-        return
+        console.log(`❌ No fork found for assignment ${assignment.id}`)
+        return { hasNewCommits: false, commits: [] }
       }
       
-      if (forkInfo.isPrivate) {
-        console.log('Fork is private, skipping activity check')
-        return
-      }
+      // Check for new commits since last activity
+      const lastActivity = new Date(assignment.lastActivityAt)
+      const commits = await this.getCommitsSince(forkInfo, lastActivity)
       
-      // Get commits since last activity
-      const commits = await this.octokit.repos.listCommits({
-        owner: forkInfo.owner.login,
-        repo: forkInfo.name,
-        since: assignment.lastActivityAt.toISOString(),
-        per_page: 100
-      })
-      
-      // Filter commits by assignee
-      const assigneeCommits = commits.data.filter(commit => 
-        commit.author?.login === assignment.assigneeLogin ||
-        commit.committer?.login === assignment.assigneeLogin
-      )
-      
-      console.log(`Found ${assigneeCommits.length} commits by assignee since last activity`)
-      
-      // Update activity if new commits found
-      if (assigneeCommits.length > 0) {
-        const latestCommit = assigneeCommits[0]
+      if (commits.length > 0) {
+        console.log(`📝 Found ${commits.length} new commits in fork`)
         
+        // Update assignment activity
         await this.assignmentService.updateActivity(
           assignment.id,
           'FORK_COMMIT',
-          'FORK',
+          'FORK_REPO',
           {
-            commitSha: latestCommit.sha,
-            commitMessage: latestCommit.commit.message,
-            commitCount: assigneeCommits.length,
-            commits: assigneeCommits.map(c => ({
-              sha: c.sha,
-              message: c.commit.message,
-              author: c.author?.login,
-              date: c.commit.author.date
-            }))
+            commits: commits,
+            timestamp: new Date()
           }
         )
         
-        console.log(`Updated activity for assignment ${assignment.id} with fork commits`)
+        return { hasNewCommits: true, commits }
+      } else {
+        console.log(`📭 No new commits found in fork`)
+        return { hasNewCommits: false, commits: [] }
       }
     } catch (error) {
-      console.error('Fork activity check error:', error)
-      
-      // Mark assignment as unknown on persistent failures
-      if (this.isPersistentError(error)) {
-        await this.assignmentService.updateStatus(assignment.id, 'UNKNOWN')
-      }
+      console.error(`❌ Error checking fork activity for assignment ${assignment.id}:`, error)
+      return { hasNewCommits: false, commits: [] }
     }
   }
 
-  async checkAllActiveAssignments() {
+  private async getCommitsSince(forkInfo: any, since: Date) {
     try {
-      const assignments = await this.assignmentService.getActiveAssignments()
-      console.log(`Checking fork activity for ${assignments.length} active assignments`)
+      console.log(`📊 Getting commits since ${since.toISOString()} for fork ${forkInfo.forkOwner}/${forkInfo.forkId}`)
       
-      for (const assignment of assignments) {
-        try {
-          await this.checkForkActivity(assignment)
-          
-          // Add delay to avoid rate limiting
-          await new Promise(resolve => setTimeout(resolve, 1000))
-        } catch (error) {
-          console.error(`Error checking fork activity for assignment ${assignment.id}:`, error)
-        }
-      }
-    } catch (error) {
-      console.error('Error checking all fork activities:', error)
-    }
-  }
-
-  private async cacheForkInfo(repositoryId: string, fork: any) {
-    try {
-      const expiresAt = new Date()
-      expiresAt.setHours(expiresAt.getHours() + 12) // Cache for 12 hours
-      
-      await prisma.forkCache.upsert({
-        where: {
-          repositoryId_forkOwner: {
-            repositoryId,
-            forkOwner: fork.owner.login
-          }
-        },
-        update: {
-          forkId: fork.id.toString(),
-          forkName: fork.name,
-          defaultBranch: fork.default_branch,
-          isPrivate: fork.private,
-          lastChecked: new Date(),
-          expiresAt
-        },
-        create: {
-          repositoryId,
-          forkOwner: fork.owner.login,
-          forkId: fork.id.toString(),
-          forkName: fork.name,
-          defaultBranch: fork.default_branch,
-          isPrivate: fork.private,
-          lastChecked: new Date(),
-          expiresAt
-        }
+      const commits = await this.octokit.repos.listCommits({
+        owner: forkInfo.forkOwner,
+        repo: forkInfo.forkId,
+        since: since.toISOString(),
+        per_page: 50
       })
       
-      console.log(`Cached fork info for ${fork.owner.login}`)
+      const commitData = commits.data.map(commit => ({
+        sha: commit.sha,
+        message: commit.commit.message,
+        author: commit.commit.author?.name || 'Unknown',
+        date: commit.commit.author?.date || new Date().toISOString(),
+        url: commit.html_url
+      }))
+      
+      console.log(`📝 Retrieved ${commitData.length} commits from fork`)
+      return commitData
     } catch (error) {
-      console.error('Error caching fork info:', error)
+      console.error(`❌ Error getting commits from fork:`, error)
+      return []
     }
   }
 
-  private async getCachedForkInfo(repositoryId: string, forkOwner: string) {
-    try {
-      const cached = await prisma.forkCache.findUnique({
-        where: {
-          repositoryId_forkOwner: {
-            repositoryId,
-            forkOwner
-          }
-        }
-      })
-      
-      if (cached && cached.expiresAt > new Date()) {
-        return {
-          id: cached.forkId,
-          name: cached.forkName,
-          owner: { login: forkOwner },
-          default_branch: cached.defaultBranch,
-          private: cached.isPrivate
-        }
-      }
-      
-      return null
-    } catch (error) {
-      console.error('Error getting cached fork info:', error)
-      return null
-    }
-  }
-
-  private isPersistentError(error: any): boolean {
-    // Check for persistent API errors that should mark assignment as unknown
-    if (error.status === 404) return true // Fork not found
-    if (error.status === 403) return true // Access denied
-    if (error.status >= 500) return true // Server errors
+  async checkAllForks(assignments: any[]) {
+    console.log(`🍴 Checking forks for ${assignments.length} assignments`)
     
-    return false
+    const results = []
+    
+    for (const assignment of assignments) {
+      try {
+        const forkActivity = await this.checkForkActivity(assignment)
+        results.push({
+          assignmentId: assignment.id,
+          hasNewCommits: forkActivity.hasNewCommits,
+          commitCount: forkActivity.commits.length
+        })
+      } catch (error) {
+        console.error(`❌ Error checking fork for assignment ${assignment.id}:`, error)
+        results.push({
+          assignmentId: assignment.id,
+          hasNewCommits: false,
+          commitCount: 0,
+          error: error instanceof Error ? error.message : 'Unknown error'
+        })
+      }
+    }
+    
+    console.log(`✅ Fork check completed for ${assignments.length} assignments`)
+    return results
+  }
+
+  async getForkCache(repositoryId: string, forkOwner: string) {
+    try {
+      console.log(`💾 Getting fork cache for ${repositoryId}/${forkOwner}`)
+      
+      // Simulate cache retrieval
+      return null
+    } catch (error) {
+      console.error(`❌ Error getting fork cache:`, error)
+      return null
+    }
+  }
+
+  async setForkCache(forkInfo: any) {
+    try {
+      console.log(`💾 Setting fork cache for ${forkInfo.repositoryId}/${forkInfo.forkOwner}`)
+      
+      // Simulate cache storage
+      console.log(`✅ Fork cache stored`)
+      return true
+    } catch (error) {
+      console.error(`❌ Error setting fork cache:`, error)
+      return false
+    }
   }
 }

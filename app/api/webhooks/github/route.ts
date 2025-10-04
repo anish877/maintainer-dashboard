@@ -1,6 +1,6 @@
+// GitHub webhook handler without database dependency
 import { NextRequest, NextResponse } from 'next/server'
 import crypto from 'crypto'
-import { prisma } from '@/lib/prisma'
 import { AssignmentService } from '@/lib/services/assignment-service'
 import { AIAnalysisService } from '@/lib/services/ai-analysis-service'
 
@@ -14,14 +14,14 @@ export async function POST(request: NextRequest) {
     
     // Verify webhook signature
     if (!verifySignature(payload, signature)) {
-      console.error('Invalid webhook signature')
+      console.error('❌ Invalid webhook signature')
       return NextResponse.json({ error: 'Invalid signature' }, { status: 401 })
     }
     
     const event = request.headers.get('x-github-event')
     const data = JSON.parse(payload)
     
-    console.log(`Received GitHub webhook: ${event}`)
+    console.log(`📡 Received GitHub webhook: ${event}`)
     
     // Route to appropriate handler
     switch (event) {
@@ -38,13 +38,139 @@ export async function POST(request: NextRequest) {
         await handlePushEvent(data)
         break
       default:
-        console.log(`Unhandled webhook event: ${event}`)
+        console.log(`⚠️ Unhandled webhook event: ${event}`)
     }
     
     return NextResponse.json({ success: true })
   } catch (error) {
-    console.error('Webhook processing error:', error)
+    console.error('❌ Error processing webhook:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+  }
+}
+
+async function handleIssuesEvent(data: any) {
+  try {
+    const action = data.action
+    const issue = data.issue
+    const repository = data.repository
+    
+    console.log(`📋 Handling issues event: ${action} for issue #${issue.number}`)
+    
+    if (action === 'assigned' && issue.assignees && issue.assignees.length > 0) {
+      // Record new assignment
+      for (const assignee of issue.assignees) {
+        await assignmentService.recordAssignment({
+          repositoryId: repository.id.toString(),
+          repositoryName: repository.full_name,
+          issueNumber: issue.number,
+          assigneeId: assignee.id.toString(),
+          assigneeLogin: assignee.login
+        })
+      }
+    } else if (action === 'unassigned' && issue.assignees && issue.assignees.length === 0) {
+      // Handle unassignment
+      console.log(`🚫 Issue #${issue.number} was unassigned`)
+    }
+  } catch (error) {
+    console.error('❌ Error handling issues event:', error)
+  }
+}
+
+async function handleIssueCommentEvent(data: any) {
+  try {
+    const comment = data.comment
+    const issue = data.issue
+    const repository = data.repository
+    
+    console.log(`💬 Handling issue comment event for issue #${issue.number}`)
+    
+    // Check if comment is from an assignee
+    if (issue.assignees && issue.assignees.some((assignee: any) => assignee.login === comment.user.login)) {
+      console.log(`📝 Comment from assignee ${comment.user.login} on issue #${issue.number}`)
+      
+      // Update assignment activity (simulated)
+      const assignmentId = `assignment-${issue.number}`
+      await assignmentService.updateActivity(
+        assignmentId,
+        'ISSUE_COMMENT',
+        'MAIN_REPO',
+        {
+          commentId: comment.id,
+          commentBody: comment.body,
+          timestamp: new Date()
+        }
+      )
+      
+      // Perform AI analysis on comment
+      try {
+        const aiAnalysis = await aiService.analyzeComment(comment.body)
+        console.log(`🤖 AI analysis of comment:`, aiAnalysis)
+        
+        // Update assignment with AI analysis
+        await assignmentService.updateAIAnalysis(assignmentId, aiAnalysis)
+      } catch (aiError) {
+        console.error('❌ Error in AI analysis:', aiError)
+      }
+    }
+  } catch (error) {
+    console.error('❌ Error handling issue comment event:', error)
+  }
+}
+
+async function handlePullRequestEvent(data: any) {
+  try {
+    const action = data.action
+    const pullRequest = data.pull_request
+    const repository = data.repository
+    
+    console.log(`🔀 Handling pull request event: ${action} for PR #${pullRequest.number}`)
+    
+    // Check if PR is from an assignee
+    if (pullRequest.user && repository.owner.login !== pullRequest.user.login) {
+      console.log(`📝 PR from ${pullRequest.user.login} in ${repository.full_name}`)
+      
+      // Update assignment activity (simulated)
+      const assignmentId = `assignment-${pullRequest.number}`
+      await assignmentService.updateActivity(
+        assignmentId,
+        'PULL_REQUEST',
+        'MAIN_REPO',
+        {
+          prNumber: pullRequest.number,
+          prTitle: pullRequest.title,
+          timestamp: new Date()
+        }
+      )
+    }
+  } catch (error) {
+    console.error('❌ Error handling pull request event:', error)
+  }
+}
+
+async function handlePushEvent(data: any) {
+  try {
+    const commits = data.commits
+    const repository = data.repository
+    const pusher = data.pusher
+    
+    console.log(`📝 Handling push event: ${commits.length} commits by ${pusher.name}`)
+    
+    // Update assignment activity for commits (simulated)
+    for (const commit of commits) {
+      const assignmentId = `assignment-${commit.id}`
+      await assignmentService.updateActivity(
+        assignmentId,
+        'PUSH',
+        'MAIN_REPO',
+        {
+          commitSha: commit.id,
+          commitMessage: commit.message,
+          timestamp: new Date()
+        }
+      )
+    }
+  } catch (error) {
+    console.error('❌ Error handling push event:', error)
   }
 }
 
@@ -53,8 +179,8 @@ function verifySignature(payload: string, signature: string | null): boolean {
   
   const secret = process.env.GITHUB_WEBHOOK_SECRET
   if (!secret) {
-    console.warn('GITHUB_WEBHOOK_SECRET not configured')
-    return true // Allow in development
+    console.warn('⚠️ GITHUB_WEBHOOK_SECRET not set, skipping signature verification')
+    return true
   }
   
   const expectedSignature = `sha256=${crypto
@@ -62,153 +188,8 @@ function verifySignature(payload: string, signature: string | null): boolean {
     .update(payload)
     .digest('hex')}`
   
-  return signature === expectedSignature
-}
-
-// Handle issue assignment events
-async function handleIssuesEvent(payload: any) {
-  if (payload.action === 'assigned') {
-    console.log(`Issue #${payload.issue.number} assigned to ${payload.assignee.login}`)
-    
-    // Record assignment
-    await assignmentService.recordAssignment({
-      repositoryId: payload.repository.id.toString(),
-      repositoryName: payload.repository.full_name,
-      issueNumber: payload.issue.number,
-      assigneeId: payload.assignee.id.toString(),
-      assigneeLogin: payload.assignee.login
-    })
-  } else if (payload.action === 'unassigned') {
-    console.log(`Issue #${payload.issue.number} unassigned from ${payload.assignee.login}`)
-    
-    // Update assignment status
-    await assignmentService.unassignUser({
-      repositoryId: payload.repository.id.toString(),
-      issueNumber: payload.issue.number,
-      assigneeId: payload.assignee.id.toString()
-    })
-  }
-}
-
-// Handle issue comment events (MAIN REPO ACTIVITY)
-async function handleIssueCommentEvent(payload: any) {
-  console.log(`Comment on issue #${payload.issue.number} by ${payload.comment.user.login}`)
-  
-  // Find assignment for this issue and assignee
-  const assignment = await prisma.assignment.findFirst({
-    where: {
-      repositoryId: payload.repository.id.toString(),
-      issueNumber: payload.issue.number,
-      assigneeId: payload.comment.user.id.toString()
-    }
-  })
-  
-  if (assignment) {
-    // Update activity timestamp
-    await assignmentService.updateActivity(
-      assignment.id,
-      'ISSUE_COMMENT',
-      'MAIN_REPO',
-      {
-        commentId: payload.comment.id,
-        commentBody: payload.comment.body
-      }
-    )
-    
-    // AI analysis of comment for work progress detection
-    try {
-      const aiAnalysis = await aiService.analyzeComment(payload.comment.body)
-      await assignmentService.updateAIAnalysis(assignment.id, aiAnalysis)
-    } catch (error) {
-      console.error('AI analysis failed:', error)
-    }
-  }
-}
-
-// Handle pull request events (MAIN REPO ACTIVITY)
-async function handlePullRequestEvent(payload: any) {
-  console.log(`PR #${payload.pull_request.number} ${payload.action} by ${payload.pull_request.user.login}`)
-  
-  // Check if PR is linked to an issue
-  const issueNumbers = extractIssueNumbers(payload.pull_request.body || '')
-  
-  for (const issueNumber of issueNumbers) {
-    const assignment = await prisma.assignment.findFirst({
-      where: {
-        repositoryId: payload.repository.id.toString(),
-        issueNumber: issueNumber,
-        assigneeId: payload.pull_request.user.id.toString()
-      }
-    })
-    
-    if (assignment) {
-      await assignmentService.updateActivity(
-        assignment.id,
-        'PULL_REQUEST',
-        'MAIN_REPO',
-        {
-          prNumber: payload.pull_request.number,
-          prAction: payload.action,
-          prTitle: payload.pull_request.title
-        }
-      )
-    }
-  }
-}
-
-// Handle push events (MAIN REPO + FORK ACTIVITY)
-async function handlePushEvent(payload: any) {
-  console.log(`Push to ${payload.repository.full_name} by ${payload.pusher.name}`)
-  
-  // Check if this is a push to the main repository
-  if (payload.repository.id.toString() === payload.repository.id.toString()) {
-    // Main repo push - check for linked issues
-    const issueNumbers = extractIssueNumbersFromCommits(payload.commits)
-    
-    for (const issueNumber of issueNumbers) {
-      const assignment = await prisma.assignment.findFirst({
-        where: {
-          repositoryId: payload.repository.id.toString(),
-          issueNumber: issueNumber
-        }
-      })
-      
-      if (assignment) {
-        await assignmentService.updateActivity(
-          assignment.id,
-          'PUSH',
-          'MAIN_REPO',
-          {
-            commitCount: payload.commits.length,
-            commits: payload.commits.map((c: any) => ({
-              sha: c.id,
-              message: c.message
-            }))
-          }
-        )
-      }
-    }
-  } else {
-    // This might be a fork push - we'll handle this in the background monitoring
-    console.log('Fork push detected - will be processed by background monitoring')
-  }
-}
-
-// Extract issue numbers from text (e.g., "Fixes #123" or "Closes #456")
-function extractIssueNumbers(text: string): number[] {
-  const issueRegex = /#(\d+)/g
-  const matches = text.match(issueRegex)
-  return matches ? matches.map(match => parseInt(match.substring(1))) : []
-}
-
-// Extract issue numbers from commit messages
-function extractIssueNumbersFromCommits(commits: any[]): number[] {
-  const issueNumbers = new Set<number>()
-  
-  commits.forEach(commit => {
-    const numbers = extractIssueNumbers(commit.message)
-    numbers.forEach(num => issueNumbers.add(num))
-  })
-  
-  return Array.from(issueNumbers)
+  return crypto.timingSafeEqual(
+    Buffer.from(signature),
+    Buffer.from(expectedSignature)
+  )
 }

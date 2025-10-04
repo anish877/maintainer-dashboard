@@ -51,6 +51,9 @@ export async function GET(request: NextRequest) {
         issuesData = await getIssuesForRepo(user.accessToken, owner, repoName, state)
       } else {
         // Get issues across all repositories
+        if (!user.username) {
+          return NextResponse.json({ error: 'Username not available' }, { status: 400 })
+        }
         issuesData = await getIssuesForUser(user.accessToken, user.username, state)
       }
 

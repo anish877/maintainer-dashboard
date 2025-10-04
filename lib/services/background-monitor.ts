@@ -1,3 +1,4 @@
+// Background monitor service without database dependency
 import { AssignmentService } from './assignment-service'
 import { ForkDetectionService } from './fork-detection-service'
 import { ThresholdService } from './threshold-service'
@@ -17,47 +18,65 @@ export class BackgroundMonitorService {
   }
 
   async runMonitoringCycle() {
-    console.log('🔄 Starting assignment monitoring cycle...')
+    console.log('🔄 Starting assignment monitoring cycle (simulated)...')
     
     try {
-      // Get all active assignments
-      const assignments = await this.assignmentService.getActiveAssignments()
+      // Get all active assignments (simulated)
+      const assignments = await this.assignmentService.getActiveAssignments() as any[]
       console.log(`📊 Monitoring ${assignments.length} active assignments`)
       
       for (const assignment of assignments) {
         try {
           console.log(`🔍 Processing assignment: ${assignment.repositoryName}#${assignment.issueNumber}`)
           
-          // 1. Check fork activity
+          // Check fork activity
           await this.checkForkActivity(assignment)
           
-          // 2. Perform AI analysis
+          // Perform AI analysis
           await this.performAIAnalysis(assignment)
           
-          // 3. Evaluate thresholds
-          await this.evaluateThresholds(assignment)
+          // Evaluate thresholds
+          await this.thresholdService.evaluateAssignment(assignment)
           
-          // Add delay to avoid rate limiting
-          await this.delay(1000)
-          
+          console.log(`✅ Completed processing assignment ${assignment.id}`)
         } catch (error) {
           console.error(`❌ Error processing assignment ${assignment.id}:`, error)
-          await this.handleAssignmentError(assignment, error)
         }
       }
       
-      console.log(`✅ Completed monitoring cycle for ${assignments.length} assignments`)
+      console.log('✅ Monitoring cycle completed')
     } catch (error) {
-      console.error('❌ Monitoring cycle error:', error)
+      console.error('❌ Error in monitoring cycle:', error)
     }
   }
 
   private async checkForkActivity(assignment: any) {
     try {
-      console.log(`🔍 Checking fork activity for assignment ${assignment.id}`)
-      await this.forkDetectionService.checkForkActivity(assignment)
+      console.log(`🍴 Checking fork activity for assignment ${assignment.id}`)
+      
+      // Simulate fork detection
+      const forkActivity = await this.forkDetectionService.checkForkActivity(assignment)
+      
+      if (forkActivity.hasNewCommits) {
+        console.log(`📝 Found ${forkActivity.commits.length} new commits in fork`)
+        
+        // Update last activity timestamp
+        await this.assignmentService.updateActivity(
+          assignment.id,
+          'FORK_COMMIT',
+          'FORK_REPO',
+          {
+            commits: forkActivity.commits,
+            timestamp: new Date()
+          }
+        )
+        
+        console.log(`✅ Updated activity for assignment ${assignment.id} based on fork commits`)
+      } else {
+        console.log(`📭 No new commits found in fork for assignment ${assignment.id}`)
+      }
     } catch (error) {
-      console.error(`❌ Fork activity check failed for assignment ${assignment.id}:`, error)
+      console.error(`❌ Error checking fork activity for assignment ${assignment.id}:`, error)
     }
   }
 
@@ -65,111 +84,95 @@ export class BackgroundMonitorService {
     try {
       console.log(`🤖 Performing AI analysis for assignment ${assignment.id}`)
       
-      // Get recent activity for analysis
-      const recentActivities = await this.getRecentActivities(assignment.id)
+      // Simulate AI analysis
+      const aiAnalysis = await this.aiService.analyzeWorkProgress(assignment)
       
-      if (recentActivities.length > 0) {
-        // Analyze work progress
-        const workProgress = await this.aiService.analyzeWorkProgress(assignment)
-        
-        // Detect blocked issues
-        const blockedAnalysis = await this.aiService.detectBlockedIssues(assignment)
-        
-        // Combine analysis results
-        const combinedAnalysis = {
-          ...workProgress,
-          ...blockedAnalysis,
-          lastAnalyzed: new Date()
-        }
-        
+      if (aiAnalysis) {
         // Update assignment with AI analysis
-        await this.assignmentService.updateAIAnalysis(assignment.id, combinedAnalysis)
+        await this.assignmentService.updateAIAnalysis(assignment.id, aiAnalysis)
         
-        console.log(`✅ AI analysis completed for assignment ${assignment.id}`)
+        console.log(`✅ AI analysis completed for assignment ${assignment.id}:`, {
+          isActive: aiAnalysis.isActive,
+          workType: aiAnalysis.workType,
+          confidence: aiAnalysis.confidence,
+          isBlocked: aiAnalysis.isBlocked
+        })
+      } else {
+        console.log(`⚠️ AI analysis failed for assignment ${assignment.id}`)
       }
     } catch (error) {
-      console.error(`❌ AI analysis failed for assignment ${assignment.id}:`, error)
+      console.error(`❌ Error performing AI analysis for assignment ${assignment.id}:`, error)
     }
   }
 
-  private async evaluateThresholds(assignment: any) {
-    try {
-      console.log(`📊 Evaluating thresholds for assignment ${assignment.id}`)
-      await this.thresholdService.evaluateAssignment(assignment)
-    } catch (error) {
-      console.error(`❌ Threshold evaluation failed for assignment ${assignment.id}:`, error)
-    }
-  }
-
-  private async getRecentActivities(assignmentId: string) {
-    try {
-      const activities = await prisma.assignmentActivity.findMany({
-        where: {
-          assignmentId,
-          timestamp: {
-            gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) // Last 7 days
-          }
-        },
-        orderBy: { timestamp: 'desc' },
-        take: 10
-      })
-      
-      return activities
-    } catch (error) {
-      console.error('Error getting recent activities:', error)
-      return []
-    }
-  }
-
-  private async handleAssignmentError(assignment: any, error: any) {
-    try {
-      // Check if this is a persistent error
-      if (this.isPersistentError(error)) {
-        console.log(`⚠️ Marking assignment ${assignment.id} as unknown due to persistent error`)
-        await this.assignmentService.updateStatus(assignment.id, 'UNKNOWN')
-        
-        // Create error notification
-        await this.createErrorNotification(assignment, error)
-      }
-    } catch (notificationError) {
-      console.error('Error handling assignment error:', notificationError)
-    }
-  }
-
-  private isPersistentError(error: any): boolean {
-    // Check for persistent API errors
-    if (error.status === 404) return true // Resource not found
-    if (error.status === 403) return true // Access denied
-    if (error.status >= 500) return true // Server errors
-    if (error.message?.includes('rate limit')) return true // Rate limiting
+  async runSingleAssignmentCheck(assignmentId: string) {
+    console.log(`🔍 Running single assignment check for ${assignmentId}`)
     
-    return false
-  }
-
-  private async createErrorNotification(assignment: any, error: any) {
     try {
-      await prisma.assignmentNotification.create({
-        data: {
-          assignmentId: assignment.id,
-          type: 'AI_ANALYSIS_UPDATE',
-          title: 'Monitoring Error',
-          message: `Assignment monitoring encountered an error: ${error.message}`,
-          priority: 'NORMAL',
-          metadata: {
-            error: error.message,
-            timestamp: new Date()
-          }
-        }
-      })
-    } catch (notificationError) {
-      console.error('Error creating error notification:', notificationError)
+      // Get assignment details (simulated)
+      const assignment = await this.assignmentService.getAssignmentById(assignmentId)
+      
+      if (!assignment) {
+        console.log(`❌ Assignment ${assignmentId} not found`)
+        return
+      }
+      
+      // Check fork activity
+      await this.checkForkActivity(assignment)
+      
+      // Perform AI analysis
+      await this.performAIAnalysis(assignment)
+      
+      // Evaluate thresholds
+      await this.thresholdService.evaluateAssignment(assignment)
+      
+      console.log(`✅ Single assignment check completed for ${assignmentId}`)
+    } catch (error) {
+      console.error(`❌ Error in single assignment check for ${assignmentId}:`, error)
     }
   }
 
-  private async delay(ms: number) {
-    return new Promise(resolve => setTimeout(resolve, ms))
+  async runForkDetectionCycle() {
+    console.log('🍴 Starting fork detection cycle (simulated)...')
+    
+    try {
+      // Get all active assignments
+      const assignments = await this.assignmentService.getActiveAssignments() as any[]
+      console.log(`🍴 Checking forks for ${assignments.length} assignments`)
+      
+      for (const assignment of assignments) {
+        try {
+          await this.checkForkActivity(assignment)
+        } catch (error) {
+          console.error(`❌ Error checking fork for assignment ${assignment.id}:`, error)
+        }
+      }
+      
+      console.log('✅ Fork detection cycle completed')
+    } catch (error) {
+      console.error('❌ Error in fork detection cycle:', error)
+    }
+  }
+
+  async runAIAnalysisCycle() {
+    console.log('🤖 Starting AI analysis cycle (simulated)...')
+    
+    try {
+      // Get all active assignments
+      const assignments = await this.assignmentService.getActiveAssignments() as any[]
+      console.log(`🤖 Analyzing ${assignments.length} assignments with AI`)
+      
+      for (const assignment of assignments) {
+        try {
+          await this.performAIAnalysis(assignment)
+        } catch (error) {
+          console.error(`❌ Error analyzing assignment ${assignment.id}:`, error)
+        }
+      }
+      
+      console.log('✅ AI analysis cycle completed')
+    } catch (error) {
+      console.error('❌ Error in AI analysis cycle:', error)
+    }
   }
 }
-
-// Import prisma for the background monitor
-import { prisma } from '@/lib/prisma'

@@ -1,9 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
   provider = "prisma-client-js"
   output   = "../generated/prisma"
@@ -14,66 +8,49 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// ================================
-// USER & AUTHENTICATION
-// ================================
-
 model User {
-  id            String    @id @default(cuid())
-  githubId      Int?      @unique
-  username      String?   @unique
-  email         String?   @unique
-  name          String?
-  image         String?   // NextAuth standard field for avatar
-  emailVerified DateTime? // NextAuth standard field for email verification
-  
-  // Additional GitHub-specific fields
-  bio           String?
-  
-  // OAuth tokens
-  accessToken   String?
-  refreshToken  String?
-  tokenExpiry   DateTime?
-  
-  // User preferences
-  timezone      String    @default("UTC")
-  emailNotifications Boolean @default(true)
-  
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-  lastLoginAt   DateTime?
-  
-  // NextAuth.js relations
-  accounts      Account[]
-  sessions      Session[]
-  
-  // Relations
-  repositories  Repository[]
-  teamMembers   TeamMember[]
-  notifications UserNotification[]
-  activities    ActivityLog[]
-  assignments   Assignment[]
-  
+  id                   String                 @id @default(cuid())
+  githubId             Int?                   @unique
+  username             String?                @unique
+  email                String?                @unique
+  name                 String?
+  bio                  String?
+  accessToken          String?
+  refreshToken         String?
+  tokenExpiry          DateTime?
+  timezone             String                 @default("UTC")
+  emailNotifications   Boolean                @default(true)
+  createdAt            DateTime               @default(now())
+  updatedAt            DateTime               @updatedAt
+  lastLoginAt          DateTime?
+  emailVerified        DateTime?
+  image                String?
+  accounts             Account[]
+  activities           ActivityLog[]
+  CompletenessTemplate CompletenessTemplate[]
+  repositories         Repository[]
+  sessions             Session[]
+  teamMembers          TeamMember[]
+  notifications        UserNotification[]
+
   @@index([githubId])
   @@index([username])
 }
 
-// NextAuth.js required models
 model Account {
   id                String  @id @default(cuid())
   userId            String
   type              String
   provider          String
   providerAccountId String
-  refresh_token     String? @db.Text
-  access_token      String? @db.Text
+  refresh_token     String?
+  access_token      String?
   expires_at        Int?
   token_type        String?
   scope             String?
-  id_token          String? @db.Text
+  id_token          String?
   session_state     String?
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([provider, providerAccountId])
 }
@@ -94,87 +71,530 @@ model VerificationToken {
   @@unique([identifier, token])
 }
 
-// ================================
-// REPOSITORY & TEAM
-// ================================
-
 model Repository {
-  id              String    @id @default(cuid())
-  githubId        Int       @unique
-  owner           String
-  name            String
-  fullName        String    @unique // "owner/repo"
-  description     String?
-  
-  // Repository metadata
-  isPrivate       Boolean   @default(false)
-  defaultBranch   String    @default("main")
-  language        String?
-  stars           Int       @default(0)
-  forks           Int       @default(0)
-  
-  // Monitoring settings
-  isActive        Boolean   @default(true)
-  webhookUrl      String?
-  webhookSecret   String?
-  
-  // AI & Automation settings
-  autoLabelEnabled      Boolean @default(true)
-  duplicateDetection    Boolean @default(true)
-  spamDetection         Boolean @default(true)
-  staleIssueThreshold   Int     @default(14) // days
-  assigneeActivityThreshold Int @default(7) // days
-  communityScrapingEnabled Boolean @default(false)
-  
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
-  lastSyncedAt    DateTime?
-  
-  // Relations
-  ownerId         String
-  ownerUser       User      @relation(fields: [ownerId], references: [id], onDelete: Cascade)
-  
-  issues          Issue[]
-  pullRequests    PullRequest[]
-  teamMembers     TeamMember[]
-  labels          Label[]
-  contributors    Contributor[]
-  scraperSources  ScraperSource[]
-  analytics       RepositoryAnalytics[]
-  assignments     Assignment[]
-  forkCaches      ForkCache[]
-  
+  id                        String                 @id @default(cuid())
+  githubId                  Int                    @unique
+  owner                     String
+  name                      String
+  fullName                  String                 @unique
+  description               String?
+  isPrivate                 Boolean                @default(false)
+  defaultBranch             String                 @default("main")
+  language                  String?
+  stars                     Int                    @default(0)
+  forks                     Int                    @default(0)
+  isActive                  Boolean                @default(true)
+  webhookUrl                String?
+  webhookSecret             String?
+  autoLabelEnabled          Boolean                @default(true)
+  duplicateDetection        Boolean                @default(true)
+  spamDetection             Boolean                @default(true)
+  staleIssueThreshold       Int                    @default(14)
+  assigneeActivityThreshold Int                    @default(7)
+  communityScrapingEnabled  Boolean                @default(false)
+  createdAt                 DateTime               @default(now())
+  updatedAt                 DateTime               @updatedAt
+  lastSyncedAt              DateTime?
+  ownerId                   String
+  CompletenessTemplate      CompletenessTemplate[]
+  contributors              Contributor[]
+  issues                    Issue[]
+  labels                    Label[]
+  PendingComment            PendingComment[]
+  pullRequests              PullRequest[]
+  ownerUser                 User                   @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  analytics                 RepositoryAnalytics[]
+  scraperSources            ScraperSource[]
+  teamMembers               TeamMember[]
+
   @@index([githubId])
   @@index([fullName])
   @@index([ownerId])
 }
 
 model TeamMember {
-  id              String   @id @default(cuid())
-  role            TeamRole @default(MAINTAINER)
-  
-  // Workload & availability
-  maxReviewLoad   Int      @default(5)
-  isAvailable     Boolean  @default(true)
-  timezone        String?
-  
-  // Expertise areas (JSON array of strings)
-  expertiseAreas  Json?    // ["frontend", "backend", "database"]
-  
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-  
-  // Relations
-  userId          String
-  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  repositoryId    String
-  repository      Repository @relation(fields: [repositoryId], references: [id], onDelete: Cascade)
-  
-  assignedIssues  Issue[]  @relation("AssignedIssues")
-  assignedPRs     PullRequest[] @relation("AssignedPRs")
-  
+  id             String        @id @default(cuid())
+  role           TeamRole      @default(MAINTAINER)
+  maxReviewLoad  Int           @default(5)
+  isAvailable    Boolean       @default(true)
+  timezone       String?
+  expertiseAreas Json?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  userId         String
+  repositoryId   String
+  assignedIssues Issue[]       @relation("AssignedIssues")
+  assignedPRs    PullRequest[] @relation("AssignedPRs")
+  repository     Repository    @relation(fields: [repositoryId], references: [id], onDelete: Cascade)
+  user           User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+
   @@unique([userId, repositoryId])
   @@index([repositoryId])
+}
+
+model Issue {
+  id                   String          @id @default(cuid())
+  githubId             Int             @unique
+  number               Int
+  title                String
+  body                 String?
+  state                IssueState      @default(OPEN)
+  githubUrl            String
+  authorUsername       String
+  authorAvatarUrl      String?
+  issueType            IssueType?
+  priority             Priority?
+  difficulty           Difficulty?
+  aiConfidence         Float?
+  hasReproSteps        Boolean         @default(false)
+  hasExpected          Boolean         @default(false)
+  hasEnvironment       Boolean         @default(false)
+  completenessScore    Float           @default(0)
+  isAssigned           Boolean         @default(false)
+  assignedAt           DateTime?
+  lastAssigneeActivity DateTime?
+  isStaleAssignment    Boolean         @default(false)
+  activityScore        Float           @default(0)
+  isDuplicate          Boolean         @default(false)
+  duplicateOfId        String?
+  similarityScore      Float?
+  isCommunitySourced   Boolean         @default(false)
+  sourceType           SourceType?
+  sourceUrl            String?
+  commentCount         Int             @default(0)
+  reactionCount        Int             @default(0)
+  createdAt            DateTime        @default(now())
+  updatedAt            DateTime        @updatedAt
+  closedAt             DateTime?
+  repositoryId         String
+  assigneeId           String?
+  assignee             TeamMember?     @relation("AssignedIssues", fields: [assigneeId], references: [id])
+  duplicateOf          Issue?          @relation("DuplicateIssues", fields: [duplicateOfId], references: [id])
+  duplicates           Issue[]         @relation("DuplicateIssues")
+  repository           Repository      @relation(fields: [repositoryId], references: [id], onDelete: Cascade)
+  activities           IssueActivity[]
+  comments             IssueComment[]
+  labels               IssueLabel[]
+  sentimentAnalysis    IssueSentiment?
+
+  @@unique([repositoryId, number])
+  @@index([githubId])
+  @@index([repositoryId, state])
+  @@index([isStaleAssignment])
+  @@index([isCommunitySourced])
+}
+
+model IssueActivity {
+  id           String       @id @default(cuid())
+  activityType ActivityType
+  metadata     Json?
+  createdAt    DateTime     @default(now())
+  issueId      String
+  issue        Issue        @relation(fields: [issueId], references: [id], onDelete: Cascade)
+
+  @@index([issueId, createdAt])
+}
+
+model IssueComment {
+  id             String     @id @default(cuid())
+  githubId       Int        @unique
+  body           String
+  authorUsername String
+  isFromAssignee Boolean    @default(false)
+  sentiment      Sentiment?
+  sentimentScore Float?
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
+  issueId        String
+  issue          Issue      @relation(fields: [issueId], references: [id], onDelete: Cascade)
+
+  @@index([issueId])
+}
+
+model IssueSentiment {
+  id               String    @id @default(cuid())
+  overallSentiment Sentiment @default(NEUTRAL)
+  averageScore     Float     @default(0)
+  toxicComments    Int       @default(0)
+  positiveComments Int       @default(0)
+  updatedAt        DateTime  @updatedAt
+  issueId          String    @unique
+  issue            Issue     @relation(fields: [issueId], references: [id], onDelete: Cascade)
+}
+
+model PullRequest {
+  id                     String      @id @default(cuid())
+  githubId               Int         @unique
+  number                 Int
+  title                  String
+  body                   String?
+  state                  PRState     @default(OPEN)
+  githubUrl              String
+  authorUsername         String
+  authorAvatarUrl        String?
+  sourceBranch           String
+  targetBranch           String
+  isFirstTimeContributor Boolean     @default(false)
+  isSpam                 Boolean     @default(false)
+  isLowQuality           Boolean     @default(false)
+  qualityScore           Float       @default(0)
+  reviewCount            Int         @default(0)
+  approvalCount          Int         @default(0)
+  changeRequestCount     Int         @default(0)
+  additions              Int         @default(0)
+  deletions              Int         @default(0)
+  changedFiles           Int         @default(0)
+  isDraft                Boolean     @default(false)
+  isMergeable            Boolean     @default(false)
+  mergedAt               DateTime?
+  createdAt              DateTime    @default(now())
+  updatedAt              DateTime    @updatedAt
+  closedAt               DateTime?
+  repositoryId           String
+  assigneeId             String?
+  labels                 PRLabel[]
+  reviews                PRReview[]
+  assignee               TeamMember? @relation("AssignedPRs", fields: [assigneeId], references: [id])
+  repository             Repository  @relation(fields: [repositoryId], references: [id], onDelete: Cascade)
+
+  @@unique([repositoryId, number])
+  @@index([githubId])
+  @@index([repositoryId, state])
+  @@index([isSpam])
+  @@index([isFirstTimeContributor])
+}
+
+model PRReview {
+  id               String      @id @default(cuid())
+  githubId         Int         @unique
+  state            ReviewState
+  reviewerUsername String
+  body             String?
+  submittedAt      DateTime
+  pullRequestId    String
+  pullRequest      PullRequest @relation(fields: [pullRequestId], references: [id], onDelete: Cascade)
+
+  @@index([pullRequestId])
+}
+
+model Label {
+  id              String       @id @default(cuid())
+  githubId        Int?         @unique
+  name            String
+  color           String
+  description     String?
+  isAutoGenerated Boolean      @default(false)
+  createdAt       DateTime     @default(now())
+  repositoryId    String
+  issues          IssueLabel[]
+  repository      Repository   @relation(fields: [repositoryId], references: [id], onDelete: Cascade)
+  pullRequests    PRLabel[]
+
+  @@unique([repositoryId, name])
+  @@index([repositoryId])
+}
+
+model IssueLabel {
+  id        String   @id @default(cuid())
+  appliedAt DateTime @default(now())
+  appliedBy String?
+  issueId   String
+  labelId   String
+  issue     Issue    @relation(fields: [issueId], references: [id], onDelete: Cascade)
+  label     Label    @relation(fields: [labelId], references: [id], onDelete: Cascade)
+
+  @@unique([issueId, labelId])
+  @@index([issueId])
+  @@index([labelId])
+}
+
+model PRLabel {
+  id            String      @id @default(cuid())
+  appliedAt     DateTime    @default(now())
+  pullRequestId String
+  labelId       String
+  label         Label       @relation(fields: [labelId], references: [id], onDelete: Cascade)
+  pullRequest   PullRequest @relation(fields: [pullRequestId], references: [id], onDelete: Cascade)
+
+  @@unique([pullRequestId, labelId])
+  @@index([pullRequestId])
+  @@index([labelId])
+}
+
+model Contributor {
+  id                 String                   @id @default(cuid())
+  username           String
+  avatarUrl          String?
+  totalContributions Int                      @default(0)
+  issuesCreated      Int                      @default(0)
+  prsCreated         Int                      @default(0)
+  commitsCount       Int                      @default(0)
+  isFirstTime        Boolean                  @default(true)
+  lastContribution   DateTime?
+  retentionScore     Float                    @default(0)
+  engagementScore    Float                    @default(0)
+  createdAt          DateTime                 @default(now())
+  updatedAt          DateTime                 @updatedAt
+  repositoryId       String
+  repository         Repository               @relation(fields: [repositoryId], references: [id], onDelete: Cascade)
+  achievements       ContributorAchievement[]
+
+  @@unique([repositoryId, username])
+  @@index([repositoryId])
+  @@index([username])
+}
+
+model ContributorAchievement {
+  id              String          @id @default(cuid())
+  achievementType AchievementType
+  title           String
+  description     String?
+  earnedAt        DateTime        @default(now())
+  contributorId   String
+  contributor     Contributor     @relation(fields: [contributorId], references: [id], onDelete: Cascade)
+
+  @@index([contributorId])
+}
+
+model ScraperSource {
+  id             String           @id @default(cuid())
+  sourceType     SourceType
+  url            String?
+  keywords       Json?
+  isActive       Boolean          @default(true)
+  lastScrapedAt  DateTime?
+  scrapeInterval Int              @default(60)
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+  repositoryId   String
+  scrapedContent ScrapedContent[]
+  repository     Repository       @relation(fields: [repositoryId], references: [id], onDelete: Cascade)
+
+  @@index([repositoryId])
+  @@index([sourceType])
+}
+
+model ScrapedContent {
+  id                String        @id @default(cuid())
+  title             String
+  content           String
+  url               String        @unique
+  isPotentialBug    Boolean       @default(false)
+  confidenceScore   Float?
+  suggestedType     IssueType?
+  suggestedPriority Priority?
+  status            ScrapedStatus @default(PENDING)
+  processedAt       DateTime?
+  createdIssueId    String?
+  scrapedAt         DateTime      @default(now())
+  sourceId          String
+  source            ScraperSource @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+
+  @@index([sourceId])
+  @@index([status])
+}
+
+model RepositoryAnalytics {
+  id                 String     @id @default(cuid())
+  date               DateTime   @default(now()) @db.Date
+  openIssues         Int        @default(0)
+  closedIssues       Int        @default(0)
+  avgCloseTime       Float?
+  openPRs            Int        @default(0)
+  mergedPRs          Int        @default(0)
+  avgMergeTime       Float?
+  activeContributors Int        @default(0)
+  newContributors    Int        @default(0)
+  sentimentScore     Float?
+  responseTime       Float?
+  createdAt          DateTime   @default(now())
+  repositoryId       String
+  repository         Repository @relation(fields: [repositoryId], references: [id], onDelete: Cascade)
+
+  @@unique([repositoryId, date])
+  @@index([repositoryId, date])
+}
+
+model UserNotification {
+  id        String               @id @default(cuid())
+  type      NotificationType
+  title     String
+  message   String
+  metadata  Json?
+  priority  NotificationPriority @default(NORMAL)
+  isRead    Boolean              @default(false)
+  readAt    DateTime?
+  createdAt DateTime             @default(now())
+  userId    String
+  user      User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, isRead])
+  @@index([createdAt])
+}
+
+model ActivityLog {
+  id         String   @id @default(cuid())
+  action     String
+  entityType String
+  entityId   String?
+  metadata   Json?
+  ipAddress  String?
+  userAgent  String?
+  createdAt  DateTime @default(now())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@index([entityType, entityId])
+}
+
+model CompletenessTemplate {
+  id               String           @id
+  name             String
+  description      String?
+  category         TemplateCategory
+  template         Json
+  variables        Json
+  styling          Json
+  isActive         Boolean          @default(true)
+  isDefault        Boolean          @default(false)
+  requiresApproval Boolean          @default(true)
+  autoApply        Boolean          @default(false)
+  usageCount       Int              @default(0)
+  lastUsed         DateTime?
+  conditions       Json?
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime
+  repositoryId     String?
+  createdById      String
+  User             User             @relation(fields: [createdById], references: [id])
+  Repository       Repository?      @relation(fields: [repositoryId], references: [id])
+  PendingComment   PendingComment[]
+
+  @@index([createdById])
+  @@index([repositoryId, isActive])
+}
+
+model FeedbackLoop {
+  id               String   @id
+  processedIssueId String
+  feedbackType     String
+  notes            String?
+  createdAt        DateTime @default(now())
+
+  @@index([processedIssueId])
+}
+
+model PendingComment {
+  id                   String               @id
+  issueNumber          Int
+  issueTitle           String
+  issueUrl             String
+  issueAuthor          String
+  issueBody            String?
+  completenessAnalysis Json
+  qualityScore         Float
+  missingElements      Json
+  templateId           String
+  generatedComment     String
+  finalComment         String?
+  status               ApprovalStatus       @default(PENDING)
+  approvedBy           String?
+  approvedAt           DateTime?
+  rejectedBy           String?
+  rejectedAt           DateTime?
+  rejectionReason      String?
+  githubCommentId      Int?                 @unique
+  postedAt             DateTime?
+  analysisConfidence   Float                @default(0)
+  analysisVersion      String               @default("v1")
+  createdAt            DateTime             @default(now())
+  updatedAt            DateTime
+  repositoryId         String
+  Repository           Repository           @relation(fields: [repositoryId], references: [id])
+  CompletenessTemplate CompletenessTemplate @relation(fields: [templateId], references: [id])
+
+  @@index([issueNumber])
+  @@index([repositoryId, status])
+  @@index([status, createdAt])
+}
+
+model ProcessedIssue {
+  id               String      @id
+  scrapedPostId    String      @unique
+  type             String
+  confidence       Float
+  summary          String
+  technicalDetails String?
+  severity         String
+  suggestedLabels  String[]
+  affectedArea     String?
+  aiModel          String      @default("gpt-4o-mini")
+  aiTokensUsed     Int?
+  aiPromptVersion  String      @default("v1")
+  isDuplicate      Boolean     @default(false)
+  duplicateOfId    String?
+  duplicateScore   Float?
+  embedding        String?
+  githubIssueId    Int?        @unique
+  githubUrl        String?
+  githubLabels     String[]
+  status           String      @default("pending")
+  reviewedAt       DateTime?
+  reviewedBy       String?
+  userImpact       Int?
+  sentimentScore   Float?
+  createdAt        DateTime    @default(now())
+  updatedAt        DateTime
+  ScrapedPost      ScrapedPost @relation(fields: [scrapedPostId], references: [id], onDelete: Cascade)
+
+  @@index([createdAt])
+  @@index([isDuplicate])
+  @@index([status])
+  @@index([type, severity])
+}
+
+model ScrapedPost {
+  id               String          @id
+  source           String
+  sourceUrl        String          @unique
+  sourceId         String?
+  title            String
+  content          String
+  contentHtml      String?
+  author           String?
+  authorUrl        String?
+  upvotes          Int?
+  commentCount     Int?
+  tags             String[]
+  postedAt         DateTime?
+  scrapedAt        DateTime        @default(now())
+  targetRepository String?
+  scrapeKeywords   String[]
+  processed        Boolean         @default(false)
+  processingError  String?
+  retryCount       Int             @default(0)
+  ProcessedIssue   ProcessedIssue?
+
+  @@index([scrapedAt])
+  @@index([sourceId])
+  @@index([source, processed])
+  @@index([targetRepository])
+}
+
+model ScraperRun {
+  id          String    @id
+  source      String
+  status      String
+  itemsFound  Int       @default(0)
+  itemsNew    Int       @default(0)
+  itemsFailed Int       @default(0)
+  duration    Int?
+  error       String?
+  startedAt   DateTime  @default(now())
+  completedAt DateTime?
+
+  @@index([source, startedAt])
 }
 
 enum TeamRole {
@@ -183,81 +603,6 @@ enum TeamRole {
   MAINTAINER
   CONTRIBUTOR
   VIEWER
-}
-
-// ================================
-// ISSUES
-// ================================
-
-model Issue {
-  id              String   @id @default(cuid())
-  githubId        Int      @unique
-  number          Int
-  title           String
-  body            String?  @db.Text
-  state           IssueState @default(OPEN)
-  
-  // GitHub metadata
-  githubUrl       String
-  authorUsername  String
-  authorAvatarUrl String?
-  
-  // AI Classification
-  issueType       IssueType?
-  priority        Priority?
-  difficulty      Difficulty?
-  aiConfidence    Float?   // 0-1 confidence score
-  
-  // Completeness check
-  hasReproSteps   Boolean  @default(false)
-  hasExpected     Boolean  @default(false)
-  hasEnvironment  Boolean  @default(false)
-  completenessScore Float  @default(0) // 0-100
-  
-  // Assignment tracking
-  isAssigned      Boolean  @default(false)
-  assignedAt      DateTime?
-  lastAssigneeActivity DateTime?
-  isStaleAssignment Boolean @default(false)
-  activityScore   Float    @default(0) // 0-100
-  
-  // Duplicate detection
-  isDuplicate     Boolean  @default(false)
-  duplicateOfId   String?
-  similarityScore Float?
-  
-  // Community sourced
-  isCommunitySourced Boolean @default(false)
-  sourceType      SourceType?
-  sourceUrl       String?
-  
-  // Metrics
-  commentCount    Int      @default(0)
-  reactionCount   Int      @default(0)
-  
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-  closedAt        DateTime?
-  
-  // Relations
-  repositoryId    String
-  repository      Repository @relation(fields: [repositoryId], references: [id], onDelete: Cascade)
-  
-  assigneeId      String?
-  assignee        TeamMember? @relation("AssignedIssues", fields: [assigneeId], references: [id])
-  
-  labels          IssueLabel[]
-  duplicates      Issue[]   @relation("DuplicateIssues")
-  duplicateOf     Issue?    @relation("DuplicateIssues", fields: [duplicateOfId], references: [id])
-  comments        IssueComment[]
-  activities      IssueActivity[]
-  sentimentAnalysis IssueSentiment?
-  
-  @@unique([repositoryId, number])
-  @@index([githubId])
-  @@index([repositoryId, state])
-  @@index([isStaleAssignment])
-  @@index([isCommunitySourced])
 }
 
 enum IssueState {
@@ -298,20 +643,6 @@ enum SourceType {
   DEVTO
 }
 
-model IssueActivity {
-  id              String   @id @default(cuid())
-  activityType    ActivityType
-  metadata        Json?    // Flexible metadata storage
-  
-  createdAt       DateTime @default(now())
-  
-  // Relations
-  issueId         String
-  issue           Issue    @relation(fields: [issueId], references: [id], onDelete: Cascade)
-  
-  @@index([issueId, createdAt])
-}
-
 enum ActivityType {
   CREATED
   ASSIGNED
@@ -326,106 +657,11 @@ enum ActivityType {
   PR_LINKED
 }
 
-model IssueComment {
-  id              String   @id @default(cuid())
-  githubId        Int      @unique
-  body            String   @db.Text
-  authorUsername  String
-  isFromAssignee  Boolean  @default(false)
-  
-  // Sentiment analysis
-  sentiment       Sentiment?
-  sentimentScore  Float?   // -1 to 1
-  
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-  
-  // Relations
-  issueId         String
-  issue           Issue    @relation(fields: [issueId], references: [id], onDelete: Cascade)
-  
-  @@index([issueId])
-}
-
 enum Sentiment {
   POSITIVE
   NEUTRAL
   NEGATIVE
   TOXIC
-}
-
-model IssueSentiment {
-  id              String   @id @default(cuid())
-  overallSentiment Sentiment @default(NEUTRAL)
-  averageScore    Float    @default(0) // -1 to 1
-  toxicComments   Int      @default(0)
-  positiveComments Int     @default(0)
-  
-  updatedAt       DateTime @updatedAt
-  
-  // Relations
-  issueId         String   @unique
-  issue           Issue    @relation(fields: [issueId], references: [id], onDelete: Cascade)
-}
-
-// ================================
-// PULL REQUESTS
-// ================================
-
-model PullRequest {
-  id              String   @id @default(cuid())
-  githubId        Int      @unique
-  number          Int
-  title           String
-  body            String?  @db.Text
-  state           PRState  @default(OPEN)
-  
-  // GitHub metadata
-  githubUrl       String
-  authorUsername  String
-  authorAvatarUrl String?
-  sourceBranch    String
-  targetBranch    String
-  
-  // PR analysis
-  isFirstTimeContributor Boolean @default(false)
-  isSpam          Boolean  @default(false)
-  isLowQuality    Boolean  @default(false)
-  qualityScore    Float    @default(0) // 0-100
-  
-  // Review metrics
-  reviewCount     Int      @default(0)
-  approvalCount   Int      @default(0)
-  changeRequestCount Int   @default(0)
-  
-  // Code metrics
-  additions       Int      @default(0)
-  deletions       Int      @default(0)
-  changedFiles    Int      @default(0)
-  
-  isDraft         Boolean  @default(false)
-  isMergeable     Boolean  @default(false)
-  mergedAt        DateTime?
-  
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-  closedAt        DateTime?
-  
-  // Relations
-  repositoryId    String
-  repository      Repository @relation(fields: [repositoryId], references: [id], onDelete: Cascade)
-  
-  assigneeId      String?
-  assignee        TeamMember? @relation("AssignedPRs", fields: [assigneeId], references: [id])
-  
-  labels          PRLabel[]
-  reviews         PRReview[]
-  
-  @@unique([repositoryId, number])
-  @@index([githubId])
-  @@index([repositoryId, state])
-  @@index([isSpam])
-  @@index([isFirstTimeContributor])
 }
 
 enum PRState {
@@ -435,135 +671,11 @@ enum PRState {
   DRAFT
 }
 
-model PRReview {
-  id              String   @id @default(cuid())
-  githubId        Int      @unique
-  state           ReviewState
-  reviewerUsername String
-  body            String?  @db.Text
-  
-  submittedAt     DateTime
-  
-  // Relations
-  pullRequestId   String
-  pullRequest     PullRequest @relation(fields: [pullRequestId], references: [id], onDelete: Cascade)
-  
-  @@index([pullRequestId])
-}
-
 enum ReviewState {
   APPROVED
   CHANGES_REQUESTED
   COMMENTED
   DISMISSED
-}
-
-// ================================
-// LABELS
-// ================================
-
-model Label {
-  id              String   @id @default(cuid())
-  githubId        Int?     @unique
-  name            String
-  color           String
-  description     String?
-  
-  // Auto-labeling
-  isAutoGenerated Boolean  @default(false)
-  
-  createdAt       DateTime @default(now())
-  
-  // Relations
-  repositoryId    String
-  repository      Repository @relation(fields: [repositoryId], references: [id], onDelete: Cascade)
-  
-  issues          IssueLabel[]
-  pullRequests    PRLabel[]
-  
-  @@unique([repositoryId, name])
-  @@index([repositoryId])
-}
-
-model IssueLabel {
-  id              String   @id @default(cuid())
-  appliedAt       DateTime @default(now())
-  appliedBy       String?  // "AI" or username
-  
-  // Relations
-  issueId         String
-  issue           Issue    @relation(fields: [issueId], references: [id], onDelete: Cascade)
-  labelId         String
-  label           Label    @relation(fields: [labelId], references: [id], onDelete: Cascade)
-  
-  @@unique([issueId, labelId])
-  @@index([issueId])
-  @@index([labelId])
-}
-
-model PRLabel {
-  id              String   @id @default(cuid())
-  appliedAt       DateTime @default(now())
-  
-  // Relations
-  pullRequestId   String
-  pullRequest     PullRequest @relation(fields: [pullRequestId], references: [id], onDelete: Cascade)
-  labelId         String
-  label           Label    @relation(fields: [labelId], references: [id], onDelete: Cascade)
-  
-  @@unique([pullRequestId, labelId])
-  @@index([pullRequestId])
-  @@index([labelId])
-}
-
-// ================================
-// CONTRIBUTORS
-// ================================
-
-model Contributor {
-  id              String   @id @default(cuid())
-  username        String
-  avatarUrl       String?
-  
-  // Contribution metrics
-  totalContributions Int   @default(0)
-  issuesCreated   Int      @default(0)
-  prsCreated      Int      @default(0)
-  commitsCount    Int      @default(0)
-  
-  isFirstTime     Boolean  @default(true)
-  lastContribution DateTime?
-  
-  // Health metrics
-  retentionScore  Float    @default(0) // 0-100
-  engagementScore Float    @default(0) // 0-100
-  
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-  
-  // Relations
-  repositoryId    String
-  repository      Repository @relation(fields: [repositoryId], references: [id], onDelete: Cascade)
-  
-  achievements    ContributorAchievement[]
-  
-  @@unique([repositoryId, username])
-  @@index([repositoryId])
-  @@index([username])
-}
-
-model ContributorAchievement {
-  id              String   @id @default(cuid())
-  achievementType AchievementType
-  title           String
-  description     String?
-  earnedAt        DateTime @default(now())
-  
-  // Relations
-  contributorId   String
-  contributor     Contributor @relation(fields: [contributorId], references: [id], onDelete: Cascade)
-  
-  @@index([contributorId])
 }
 
 enum AchievementType {
@@ -578,133 +690,11 @@ enum AchievementType {
   CODE_REVIEWER
 }
 
-// ================================
-// COMMUNITY SCRAPING
-// ================================
-
-model ScraperSource {
-  id              String   @id @default(cuid())
-  sourceType      SourceType
-  
-  // Source configuration
-  url             String?  // For Reddit subreddit, SO tags, etc.
-  keywords        Json?    // Array of keywords to monitor
-  isActive        Boolean  @default(true)
-  
-  // Scraping frequency
-  lastScrapedAt   DateTime?
-  scrapeInterval  Int      @default(60) // minutes
-  
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-  
-  // Relations
-  repositoryId    String
-  repository      Repository @relation(fields: [repositoryId], references: [id], onDelete: Cascade)
-  
-  scrapedContent  ScrapedContent[]
-  
-  @@index([repositoryId])
-  @@index([sourceType])
-}
-
-model ScrapedContent {
-  id              String   @id @default(cuid())
-  title           String
-  content         String   @db.Text
-  url             String   @unique
-  
-  // AI analysis
-  isPotentialBug  Boolean  @default(false)
-  confidenceScore Float?
-  suggestedType   IssueType?
-  suggestedPriority Priority?
-  
-  // Processing status
-  status          ScrapedStatus @default(PENDING)
-  processedAt     DateTime?
-  
-  // Issue creation
-  createdIssueId  String?
-  
-  scrapedAt       DateTime @default(now())
-  
-  // Relations
-  sourceId        String
-  source          ScraperSource @relation(fields: [sourceId], references: [id], onDelete: Cascade)
-  
-  @@index([sourceId])
-  @@index([status])
-}
-
 enum ScrapedStatus {
   PENDING
   REVIEWED
   ISSUE_CREATED
   DISMISSED
-}
-
-// ================================
-// ANALYTICS
-// ================================
-
-model RepositoryAnalytics {
-  id              String   @id @default(cuid())
-  date            DateTime @default(now()) @db.Date
-  
-  // Issue metrics
-  openIssues      Int      @default(0)
-  closedIssues    Int      @default(0)
-  avgCloseTime    Float?   // hours
-  
-  // PR metrics
-  openPRs         Int      @default(0)
-  mergedPRs       Int      @default(0)
-  avgMergeTime    Float?   // hours
-  
-  // Contributor metrics
-  activeContributors Int   @default(0)
-  newContributors Int      @default(0)
-  
-  // Community health
-  sentimentScore  Float?   // -1 to 1
-  responseTime    Float?   // hours
-  
-  createdAt       DateTime @default(now())
-  
-  // Relations
-  repositoryId    String
-  repository      Repository @relation(fields: [repositoryId], references: [id], onDelete: Cascade)
-  
-  @@unique([repositoryId, date])
-  @@index([repositoryId, date])
-}
-
-// ================================
-// NOTIFICATIONS
-// ================================
-
-model UserNotification {
-  id              String   @id @default(cuid())
-  type            NotificationType
-  title           String
-  message         String   @db.Text
-  
-  // Notification metadata
-  metadata        Json?
-  priority        NotificationPriority @default(NORMAL)
-  
-  isRead          Boolean  @default(false)
-  readAt          DateTime?
-  
-  createdAt       DateTime @default(now())
-  
-  // Relations
-  userId          String
-  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
-  @@index([userId, isRead])
-  @@index([createdAt])
 }
 
 enum NotificationType {
@@ -726,151 +716,21 @@ enum NotificationPriority {
   URGENT
 }
 
-// ================================
-// ACTIVITY LOGS
-// ================================
-
-model ActivityLog {
-  id              String   @id @default(cuid())
-  action          String
-  entityType      String   // "Issue", "PR", "Repository", etc.
-  entityId        String?
-  
-  metadata        Json?
-  ipAddress       String?
-  userAgent       String?
-  
-  createdAt       DateTime @default(now())
-  
-  // Relations
-  userId          String
-  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
-  @@index([userId, createdAt])
-  @@index([entityType, entityId])
+enum ApprovalStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  POSTED
+  FAILED
+  EXPIRED
 }
 
-// ================================
-// FORK-AWARE COOKIE LICKING DETECTION
-// ================================
-
-model Assignment {
-  id              String   @id @default(cuid())
-  repositoryId    String
-  repositoryName  String
-  issueNumber     Int
-  assigneeId      String
-  assigneeLogin   String
-  assignedAt      DateTime
-  lastActivityAt  DateTime
-  status          AssignmentStatus
-  forkUrl         String?
-  forkOwner       String?
-  forkBranch      String?
-  aiAnalysis      Json?    // Store AI analysis results
-  isWhitelisted   Boolean  @default(false)
-  manualOverride  Boolean  @default(false)
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-  
-  // Relations
-  repository      Repository @relation(fields: [repositoryId], references: [id])
-  assignee        User       @relation(fields: [assigneeId], references: [id])
-  activities      AssignmentActivity[]
-  notifications   AssignmentNotification[]
-  
-  @@unique([repositoryId, issueNumber, assigneeId])
-  @@index([repositoryId])
-  @@index([assigneeId])
-  @@index([status])
-  @@index([lastActivityAt])
-}
-
-model AssignmentActivity {
-  id              String   @id @default(cuid())
-  assignmentId    String
-  activityType    AssignmentActivityType
-  source          ActivitySource
-  commitSha       String?
-  commitMessage   String?
-  timestamp       DateTime
-  metadata        Json?
-  
-  // Relations
-  assignment      Assignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
-  
-  @@index([assignmentId, timestamp])
-  @@index([activityType])
-  @@index([source])
-}
-
-model ForkCache {
-  id              String   @id @default(cuid())
-  repositoryId    String
-  forkOwner       String
-  forkId          String
-  forkName        String
-  defaultBranch   String
-  isPrivate       Boolean
-  lastChecked     DateTime
-  expiresAt       DateTime
-  
-  // Relations
-  repository      Repository @relation(fields: [repositoryId], references: [id])
-  
-  @@unique([repositoryId, forkOwner])
-  @@index([expiresAt])
-}
-
-model AssignmentNotification {
-  id              String   @id @default(cuid())
-  assignmentId    String
-  type            AssignmentNotificationType
-  title           String
-  message         String   @db.Text
-  metadata        Json?
-  priority        NotificationPriority @default(NORMAL)
-  isRead          Boolean  @default(false)
-  readAt          DateTime?
-  createdAt       DateTime @default(now())
-  
-  // Relations
-  assignment      Assignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
-  
-  @@index([assignmentId, isRead])
-  @@index([createdAt])
-}
-
-enum AssignmentStatus {
-  ACTIVE
-  WARNING
-  ALERT
-  AUTO_UNASSIGNED
-  UNKNOWN
-  MANUAL_OVERRIDE
-}
-
-enum AssignmentActivityType {
-  ISSUE_COMMENT
-  PULL_REQUEST
-  PUSH
-  FORK_COMMIT
-  MANUAL_UPDATE
-  AI_ANALYSIS
-}
-
-enum ActivitySource {
-  MAIN_REPO
-  FORK
-  MANUAL
-  AI
-}
-
-enum AssignmentNotificationType {
-  WARNING_REMINDER
-  ALERT_NOTIFICATION
-  AUTO_UNASSIGNED
-  MANUAL_OVERRIDE
-  FORK_ACTIVITY_DETECTED
-  AI_ANALYSIS_UPDATE
+enum TemplateCategory {
+  BUG_REPORT
+  FEATURE_REQUEST
+  QUESTION
+  DOCUMENTATION
+  PERFORMANCE_ISSUE
+  SECURITY_ISSUE
+  CUSTOM
 }

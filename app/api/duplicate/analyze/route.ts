@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { Octokit } from '@octokit/rest';
 import { OpenAI } from 'openai';
+import { prisma } from '@/lib/prisma';
 
 /**
  * API Route for Duplicate Detection Analysis
@@ -65,9 +66,19 @@ export async function POST(request: NextRequest) {
 
     console.log(`🔍 Starting duplicate analysis for user ${session.user.id} on ${owner}/${repo}`);
 
-    // Initialize GitHub client using user's session
+    // Get user's GitHub access token from database
+    const user = await prisma.user.findUnique({
+      where: { id: session.user.id },
+      select: { accessToken: true }
+    });
+
+    if (!user?.accessToken) {
+      return NextResponse.json({ error: 'GitHub access token required' }, { status: 401 });
+    }
+
+    // Initialize GitHub client using user's access token
     const octokit = new Octokit({
-      auth: session.accessToken,
+      auth: user.accessToken,
     });
 
     // Initialize OpenAI client
@@ -274,8 +285,8 @@ function calculateTextSimilarity(text1: string, text2: string): number {
   const set1 = new Set(words1);
   const set2 = new Set(words2);
   
-  const intersection = new Set([...set1].filter(x => set2.has(x)));
-  const union = new Set([...set1, ...set2]);
+  const intersection = new Set(Array.from(set1).filter(x => set2.has(x)));
+  const union = new Set([...Array.from(set1), ...Array.from(set2)]);
   
   return intersection.size / union.size;
 }

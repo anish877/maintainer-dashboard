@@ -56,7 +56,7 @@ export async function GET(
     // Parse repository name (handle both "owner/repo" and "repo" formats)
     const [owner, repo] = repoName.includes('/') 
       ? repoName.split('/') 
-      : [user.username, repoName]
+      : [user.username || 'unknown', repoName]
 
     console.log(`🔍 Fetching issues for ${owner}/${repo}`)
 
@@ -80,11 +80,12 @@ export async function GET(
     }
 
     // Process issues to create assignments
-    const repoAssignments = await Promise.all(
+    const repoAssignments = (await Promise.all(
       issues
         .filter(issue => issue.assignees && issue.assignees.length > 0)
         .map(async (issue) => {
-          const assignee = issue.assignees[0]
+          const assignee = issue.assignees?.[0]
+          if (!assignee) return null
           
           // Get issue comments for activity tracking
           const { data: comments } = await octokit.rest.issues.listComments({
@@ -134,11 +135,11 @@ export async function GET(
               const analysis = await aiService.analyzeWorkProgress(combinedText)
               
               aiAnalysis = {
-                isActive: analysis.hasWork,
+                isActive: analysis.isActive,
                 workType: analysis.workType,
                 confidence: analysis.confidence,
                 isBlocked: analysis.isBlocked,
-                nextSteps: analysis.nextSteps || `Last comment: ${recentComments[recentComments.length - 1]?.substring(0, 100)}...`
+                nextSteps: `Last comment: ${recentComments[recentComments.length - 1]?.substring(0, 100)}...`
               }
               
               console.log(`✅ AI Analysis result:`, {
@@ -183,7 +184,7 @@ export async function GET(
             notifications: []
           }
         })
-    )
+    )).filter(assignment => assignment !== null)
 
     // Apply automated status calculation to all assignments (TEST MODE: using minutes)
     const assignments = repoAssignments.map(assignment => {
@@ -315,7 +316,7 @@ export async function POST(
     // Parse repository name
     const [owner, repo] = repoName.includes('/') 
       ? repoName.split('/') 
-      : [user.username, repoName]
+      : [user.username || 'unknown', repoName]
 
     // Extract issue number from assignmentId (format: assignment-{issueId})
     const issueNumber = parseInt(assignmentId.replace('assignment-', ''))
@@ -399,12 +400,14 @@ export async function POST(
           
           // Provide more specific error messages
           let errorMessage = 'Failed to send reminder'
-          if (error.status === 404) {
-            errorMessage = `Issue #${issueNumber} not found in ${owner}/${repo}`
-          } else if (error.status === 403) {
-            errorMessage = 'Insufficient permissions to comment on this issue'
-          } else if (error.status === 401) {
-            errorMessage = 'GitHub authentication failed'
+          if (error && typeof error === 'object' && 'status' in error) {
+            if (error.status === 404) {
+              errorMessage = `Issue #${issueNumber} not found in ${owner}/${repo}`
+            } else if (error.status === 403) {
+              errorMessage = 'Insufficient permissions to comment on this issue'
+            } else if (error.status === 401) {
+              errorMessage = 'GitHub authentication failed'
+            }
           }
           
           return NextResponse.json({ 

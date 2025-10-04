@@ -87,13 +87,13 @@ export default function AssignmentsTable({ assignments, onAssignmentAction }: As
           {selectedItems.length > 0 && (
             <div className="flex items-center space-x-2">
               <button
-                onClick={() => onAssignmentAction('mark_active', selectedItems[0])}
+                onClick={() => onAssignmentAction('mark_active', selectedItems[0].toString())}
                 className="btn-sm bg-green-500 hover:bg-green-600 text-white"
               >
                 Mark Active ({selectedItems.length})
               </button>
               <button
-                onClick={() => onAssignmentAction('extend_deadline', selectedItems[0], { days: 30 })}
+                onClick={() => onAssignmentAction('extend_deadline', selectedItems[0].toString(), { days: 30 })}
                 className="btn-sm bg-blue-500 hover:bg-blue-600 text-white"
               >
                 Extend Deadline

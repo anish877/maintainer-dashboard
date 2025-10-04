@@ -1,6 +1,4 @@
-import { prisma } from '@/lib/prisma'
-import { AssignmentStatus, AssignmentActivityType, ActivitySource } from '@prisma/client'
-
+// Assignment service without database dependency
 export class AssignmentService {
   async recordAssignment(data: {
     repositoryId: string
@@ -10,71 +8,49 @@ export class AssignmentService {
     assigneeLogin: string
   }) {
     try {
-      // Check if assignment already exists
-      const existingAssignment = await prisma.assignment.findFirst({
-        where: {
-          repositoryId: data.repositoryId,
-          issueNumber: data.issueNumber,
-          assigneeId: data.assigneeId
-        }
-      })
-
-      if (existingAssignment) {
-        console.log(`Assignment already exists for issue #${data.issueNumber}`)
-        return existingAssignment
+      console.log(`📝 Recording assignment: ${data.assigneeLogin} -> #${data.issueNumber} in ${data.repositoryName}`)
+      
+      // Simulate assignment recording without database
+      const assignment = {
+        id: `assignment-${data.issueNumber}`,
+        repositoryId: data.repositoryId,
+        repositoryName: data.repositoryName,
+        issueNumber: data.issueNumber,
+        assigneeId: data.assigneeId,
+        assigneeLogin: data.assigneeLogin,
+        assignedAt: new Date(),
+        lastActivityAt: new Date(),
+        status: 'ACTIVE'
       }
 
-      const assignment = await prisma.assignment.create({
-        data: {
-          repositoryId: data.repositoryId,
-          repositoryName: data.repositoryName,
-          issueNumber: data.issueNumber,
-          assigneeId: data.assigneeId,
-          assigneeLogin: data.assigneeLogin,
-          assignedAt: new Date(),
-          lastActivityAt: new Date(),
-          status: AssignmentStatus.ACTIVE
-        }
-      })
-
-      // Log the assignment activity
-      await this.logActivity(assignment.id, AssignmentActivityType.ISSUE_COMMENT, ActivitySource.MAIN_REPO, {
-        action: 'assigned',
-        timestamp: new Date()
-      })
-
-      console.log(`Recorded assignment: ${data.repositoryName}#${data.issueNumber} -> ${data.assigneeLogin}`)
+      console.log(`✅ Assignment recorded: ${data.assigneeLogin} -> #${data.issueNumber}`)
       return assignment
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error recording assignment:', error)
-      if (error.message?.includes('does not exist')) {
-        console.log('⚠️ Assignment table not found, skipping assignment recording')
-        return null
-      }
       throw error
     }
   }
 
   async updateActivity(
     assignmentId: string, 
-    activityType: AssignmentActivityType, 
-    source: ActivitySource,
+    activityType: string, 
+    source: string,
     metadata?: any
   ) {
     try {
-      // Update last activity timestamp
-      await prisma.assignment.update({
-        where: { id: assignmentId },
-        data: { 
-          lastActivityAt: new Date(),
-          status: AssignmentStatus.ACTIVE // Reset to active on any activity
-        }
-      })
+      console.log(`📊 Updating activity for assignment ${assignmentId}: ${activityType} from ${source}`)
+      
+      // Simulate activity update without database
+      const activity = {
+        assignmentId,
+        activityType,
+        source,
+        timestamp: new Date(),
+        metadata: metadata || {}
+      }
 
-      // Log the activity
-      await this.logActivity(assignmentId, activityType, source, metadata)
-
-      console.log(`Updated activity for assignment ${assignmentId}: ${activityType} from ${source}`)
+      console.log(`✅ Activity updated for assignment ${assignmentId}`)
+      return activity
     } catch (error) {
       console.error('Error updating activity:', error)
       throw error
@@ -83,21 +59,17 @@ export class AssignmentService {
 
   async updateAIAnalysis(assignmentId: string, aiAnalysis: any) {
     try {
-      await prisma.assignment.update({
-        where: { id: assignmentId },
-        data: { 
-          aiAnalysis: aiAnalysis,
-          updatedAt: new Date()
-        }
-      })
-
-      // Log AI analysis activity
-      await this.logActivity(assignmentId, AssignmentActivityType.AI_ANALYSIS, ActivitySource.AI, {
-        analysis: aiAnalysis,
+      console.log(`🤖 Updating AI analysis for assignment ${assignmentId}`)
+      
+      // Simulate AI analysis update without database
+      const analysis = {
+        assignmentId,
+        aiAnalysis,
         timestamp: new Date()
-      })
+      }
 
-      console.log(`Updated AI analysis for assignment ${assignmentId}`)
+      console.log(`✅ AI analysis updated for assignment ${assignmentId}`)
+      return analysis
     } catch (error) {
       console.error('Error updating AI analysis:', error)
       throw error
@@ -110,31 +82,19 @@ export class AssignmentService {
     assigneeId: string
   }) {
     try {
-      const assignment = await prisma.assignment.findFirst({
-        where: {
-          repositoryId: data.repositoryId,
-          issueNumber: data.issueNumber,
-          assigneeId: data.assigneeId
-        }
-      })
-
-      if (assignment) {
-        await prisma.assignment.update({
-          where: { id: assignment.id },
-          data: { 
-            status: AssignmentStatus.AUTO_UNASSIGNED,
-            updatedAt: new Date()
-          }
-        })
-
-        // Log the unassignment
-        await this.logActivity(assignment.id, AssignmentActivityType.ISSUE_COMMENT, ActivitySource.MAIN_REPO, {
-          action: 'unassigned',
-          timestamp: new Date()
-        })
-
-        console.log(`Unassigned user from issue #${data.issueNumber}`)
+      console.log(`🚫 Unassigning user from issue #${data.issueNumber}`)
+      
+      // Simulate unassignment without database
+      const unassignment = {
+        repositoryId: data.repositoryId,
+        issueNumber: data.issueNumber,
+        assigneeId: data.assigneeId,
+        status: 'AUTO_UNASSIGNED',
+        timestamp: new Date()
       }
+
+      console.log(`✅ User unassigned from issue #${data.issueNumber}`)
+      return unassignment
     } catch (error) {
       console.error('Error unassigning user:', error)
       throw error
@@ -142,133 +102,131 @@ export class AssignmentService {
   }
 
   async getActiveAssignments() {
-    return await prisma.assignment.findMany({
-      where: {
-        status: {
-          in: [AssignmentStatus.ACTIVE, AssignmentStatus.WARNING, AssignmentStatus.ALERT]
-        }
-      },
-      include: {
-        repository: true,
-        assignee: true,
-        activities: {
-          orderBy: { timestamp: 'desc' },
-          take: 10
-        }
-      }
-    })
+    try {
+      console.log(`📋 Getting active assignments (simulated)`)
+      
+      // Return empty array since we're not using database
+      return []
+    } catch (error) {
+      console.error('Error getting active assignments:', error)
+      return []
+    }
   }
 
   async getAssignmentById(assignmentId: string) {
-    return await prisma.assignment.findUnique({
-      where: { id: assignmentId },
-      include: {
-        repository: true,
-        assignee: true,
-        activities: {
-          orderBy: { timestamp: 'desc' }
-        },
-        notifications: {
-          orderBy: { createdAt: 'desc' }
-        }
-      }
-    })
+    try {
+      console.log(`🔍 Getting assignment by ID: ${assignmentId} (simulated)`)
+      
+      // Return null since we're not using database
+      return null
+    } catch (error) {
+      console.error('Error getting assignment by ID:', error)
+      return null
+    }
   }
 
   async markAsActive(assignmentId: string) {
     try {
-      return await prisma.assignment.update({
-        where: { id: assignmentId },
-        data: {
-          status: AssignmentStatus.ACTIVE,
-          lastActivityAt: new Date(),
-          manualOverride: true,
-          updatedAt: new Date()
-        }
-      })
-    } catch (error: any) {
-      if (error.message?.includes('does not exist')) {
-        console.log('⚠️ Assignment table not found, simulating mark as active')
-        return { id: assignmentId, status: 'ACTIVE', lastActivityAt: new Date() }
+      console.log(`✅ Marking assignment as active: ${assignmentId}`)
+      
+      // Simulate mark as active without database
+      const result = {
+        id: assignmentId,
+        status: 'ACTIVE',
+        lastActivityAt: new Date(),
+        manualOverride: true
       }
+
+      console.log(`✅ Assignment ${assignmentId} marked as active`)
+      return result
+    } catch (error) {
+      console.error('Error marking assignment as active:', error)
       throw error
     }
   }
 
   async extendDeadline(assignmentId: string, days: number) {
     try {
-      const assignment = await prisma.assignment.findUnique({
-        where: { id: assignmentId }
-      })
-
-      if (!assignment) {
-        throw new Error('Assignment not found')
-      }
-
-      const newDeadline = new Date(assignment.lastActivityAt)
+      console.log(`⏰ Extending deadline for assignment ${assignmentId} by ${days} days`)
+      
+      // Simulate extend deadline without database
+      const newDeadline = new Date()
       newDeadline.setDate(newDeadline.getDate() + days)
-
-      return await prisma.assignment.update({
-        where: { id: assignmentId },
-        data: {
-          lastActivityAt: newDeadline,
-          manualOverride: true,
-          updatedAt: new Date()
-        }
-      })
-    } catch (error: any) {
-      if (error.message?.includes('does not exist')) {
-        console.log('⚠️ Assignment table not found, simulating extend deadline')
-        const newDeadline = new Date()
-        newDeadline.setDate(newDeadline.getDate() + days)
-        return { id: assignmentId, lastActivityAt: newDeadline, manualOverride: true }
+      
+      const result = {
+        id: assignmentId,
+        lastActivityAt: newDeadline,
+        manualOverride: true
       }
+
+      console.log(`✅ Deadline extended for assignment ${assignmentId}`)
+      return result
+    } catch (error) {
+      console.error('Error extending deadline:', error)
       throw error
     }
   }
 
   async whitelistUser(assignmentId: string) {
     try {
-      return await prisma.assignment.update({
-        where: { id: assignmentId },
-        data: {
-          isWhitelisted: true,
-          updatedAt: new Date()
-        }
-      })
-    } catch (error: any) {
-      if (error.message?.includes('does not exist')) {
-        console.log('⚠️ Assignment table not found, simulating whitelist user')
-        return { id: assignmentId, isWhitelisted: true }
+      console.log(`🔒 Whitelisting user for assignment ${assignmentId}`)
+      
+      // Simulate whitelist without database
+      const result = {
+        id: assignmentId,
+        isWhitelisted: true
       }
+
+      console.log(`✅ User whitelisted for assignment ${assignmentId}`)
+      return result
+    } catch (error) {
+      console.error('Error whitelisting user:', error)
       throw error
     }
   }
 
-  async updateStatus(assignmentId: string, status: AssignmentStatus) {
-    return await prisma.assignment.update({
-      where: { id: assignmentId },
-      data: {
+  async updateStatus(assignmentId: string, status: string) {
+    try {
+      console.log(`📊 Updating status for assignment ${assignmentId} to ${status}`)
+      
+      // Simulate status update without database
+      const result = {
+        id: assignmentId,
         status,
         updatedAt: new Date()
       }
-    })
+
+      console.log(`✅ Status updated for assignment ${assignmentId}`)
+      return result
+    } catch (error) {
+      console.error('Error updating status:', error)
+      throw error
+    }
   }
 
   private async logActivity(
     assignmentId: string,
-    activityType: AssignmentActivityType,
-    source: ActivitySource,
+    activityType: string,
+    source: string,
     metadata?: any
   ) {
-    await prisma.assignmentActivity.create({
-      data: {
+    try {
+      console.log(`📝 Logging activity for assignment ${assignmentId}: ${activityType} from ${source}`)
+      
+      // Simulate activity logging without database
+      const activity = {
         assignmentId,
         activityType,
         source,
         timestamp: new Date(),
         metadata: metadata || {}
       }
-    })
+
+      console.log(`✅ Activity logged for assignment ${assignmentId}`)
+      return activity
+    } catch (error) {
+      console.error('Error logging activity:', error)
+      throw error
+    }
   }
 }

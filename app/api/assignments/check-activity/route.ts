@@ -125,7 +125,12 @@ export async function POST(request: NextRequest) {
     }
 
     // Get recent commits (if we can access the repository)
-    let recentCommits = []
+    let recentCommits: Array<{
+      sha: string
+      message: string
+      date: string
+      url: string
+    }> = []
     try {
       const { data: commits } = await octokit.rest.repos.listCommits({
         owner,
@@ -137,11 +142,11 @@ export async function POST(request: NextRequest) {
       recentCommits = commits.map(commit => ({
         sha: commit.sha,
         message: commit.commit.message,
-        date: commit.commit.author.date,
+        date: commit.commit.author?.date || new Date().toISOString(),
         url: commit.html_url
       }))
     } catch (error) {
-      console.log('Could not fetch commits:', error.message)
+      console.log('Could not fetch commits:', error instanceof Error ? error.message : 'Unknown error')
     }
 
     const activityReport = {
