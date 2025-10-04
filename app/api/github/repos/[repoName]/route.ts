@@ -40,7 +40,7 @@ export async function GET(
       return NextResponse.json({ error: 'GitHub access token not found' }, { status: 400 })
     }
 
-    // If username is null, fetch it from GitHub API
+    // Always ensure we have a username - fetch from GitHub API if null
     let username = user.username
     if (!username) {
       console.log('🔍 [DEBUG] Username is null, fetching from GitHub API')
@@ -59,11 +59,11 @@ export async function GET(
           console.log('✅ [DEBUG] Fetched username from GitHub:', username)
           
           // Update the database with the username
-          await prisma.user.update({
+          const updatedUser = await prisma.user.update({
             where: { id: session.user.id },
             data: { username: username }
           })
-          console.log('✅ [DEBUG] Updated username in database')
+          console.log('✅ [DEBUG] Updated username in database:', updatedUser.username)
         } else {
           console.log('❌ [DEBUG] Failed to fetch GitHub user data:', githubUserResponse.status)
           return NextResponse.json({ error: 'Failed to fetch GitHub user data' }, { status: 400 })
@@ -72,6 +72,8 @@ export async function GET(
         console.error('❌ [DEBUG] Error fetching GitHub user:', error)
         return NextResponse.json({ error: 'Failed to fetch GitHub user data' }, { status: 500 })
       }
+    } else {
+      console.log('✅ [DEBUG] Using existing username from database:', username)
     }
 
     const { repoName } = await params

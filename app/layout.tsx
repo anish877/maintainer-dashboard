@@ -4,6 +4,7 @@ import { Inter } from 'next/font/google'
 import Theme from './theme-provider'
 import AppProvider from './app-provider'
 import { AuthProvider } from '@/components/auth-provider'
+import { ToastProvider } from '@/lib/toast'
 
 const inter = Inter({
   subsets: ['latin'],
@@ -26,9 +27,11 @@ export default function RootLayout({
       <body className="font-inter antialiased bg-gray-100 dark:bg-gray-900 text-gray-600 dark:text-gray-400">
         <Theme>
           <AuthProvider>
-            <AppProvider>
-              {children}
-            </AppProvider>
+            <ToastProvider>
+              <AppProvider>
+                {children}
+              </AppProvider>
+            </ToastProvider>
           </AuthProvider>
         </Theme>
       </body>

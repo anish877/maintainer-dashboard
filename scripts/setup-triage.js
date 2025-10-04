@@ -54,7 +54,7 @@ async function setupTriageSystem() {
   
   // Check environment variables
   const githubToken = process.env.GITHUB_TOKEN;
-  const openaiApiKey = process.env.OPENAI_API_KEY;
+  const openaiApiKey = process.env.OPEN_AI_KEY;
   
   if (!githubToken) {
     console.error('❌ GITHUB_TOKEN environment variable is required');
@@ -63,8 +63,8 @@ async function setupTriageSystem() {
   }
   
   if (!openaiApiKey) {
-    console.error('❌ OPENAI_API_KEY environment variable is required');
-    console.log('   Please set it with: export OPENAI_API_KEY=your_key');
+    console.error('❌ OPEN_AI_KEY environment variable is required');
+    console.log('   Please set it with: export OPEN_AI_KEY=your_key');
     process.exit(1);
   }
   
@@ -191,7 +191,7 @@ jobs:
       - name: Run AI Issue Triage
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          OPEN_AI_KEY: ${{ secrets.OPEN_AI_KEY }}
           REPO_OWNER: ${{ github.repository_owner }}
           REPO_NAME: ${{ github.event.repository.name }}
         run: |
@@ -231,7 +231,7 @@ GITHUB_TOKEN=your_github_token_here
 
 # OpenAI API Key (required)
 # Get from: https://platform.openai.com/api-keys
-OPENAI_API_KEY=your_openai_api_key_here
+OPEN_AI_KEY=your_openai_api_key_here
 
 # Repository Configuration (optional - can be set via command line)
 REPO_OWNER=${repoOwner}
@@ -295,7 +295,7 @@ features:
     console.log('\n🎉 Setup completed successfully!\n');
     console.log('📋 Next steps:');
     console.log('1. Copy .env.triage.template to .env and fill in your credentials');
-    console.log('2. Add OPENAI_API_KEY to your repository secrets');
+    console.log('2. Add OPEN_AI_KEY to your repository secrets');
     console.log('3. Customize issue-triage-config.yml with your team details');
     console.log('4. Test the system by creating a new issue or running manually');
     console.log('\n🔧 Manual testing:');

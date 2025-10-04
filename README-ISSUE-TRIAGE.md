@@ -43,7 +43,7 @@ The system uses GitHub OAuth through NextAuth, so no manual GitHub tokens are re
 
 ```env
 # OpenAI API Key (required for AI analysis)
-OPENAI_API_KEY=your_openai_api_key
+OPEN_AI_KEY=your_openai_api_key
 
 # GitHub OAuth (already configured in NextAuth)
 GITHUB_ID=your_github_oauth_app_id
@@ -125,7 +125,7 @@ export default function TriagePage() {
 1. **Add Secrets to Repository**:
    - Go to your repository Settings → Secrets and variables → Actions
    - Add `GITHUB_TOKEN` (usually auto-provided)
-   - Add `OPENAI_API_KEY` with your OpenAI API key
+   - Add `OPEN_AI_KEY` with your OpenAI API key
 
 2. **Workflow Configuration**:
    The workflow file is already created at `.github/workflows/ai-issue-triage.yml`
@@ -358,7 +358,7 @@ node scripts/ai-triage.js "123,124,125"
 ### Common Issues
 
 1. **"Missing required environment variables"**
-   - Ensure `GITHUB_TOKEN` and `OPENAI_API_KEY` are set
+   - Ensure `GITHUB_TOKEN` and `OPEN_AI_KEY` are set
    - Check repository permissions
 
 2. **"Failed to apply labels"**

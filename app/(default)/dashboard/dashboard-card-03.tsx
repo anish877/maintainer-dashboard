@@ -3,20 +3,24 @@
 import EditMenu from '@/components/edit-menu'
 import { useGitHubAnalytics } from '@/hooks/use-github-analytics'
 import { useRouter } from 'next/navigation'
+import { useToastNotifications } from '@/lib/toast'
 
 export default function DashboardCard03() {
   const { stats, loading, error } = useGitHubAnalytics()
   const router = useRouter()
+  const { success } = useToastNotifications()
 
   // Get recent repositories (last 4)
   const recentRepos = stats?.recentActivity?.slice(0, 4) || []
 
   const handleRepoClick = (repoName: string) => {
     window.open(`/${repoName}/dashboard`, '_blank')
+    success(`Opening ${repoName} dashboard in new tab`)
   }
 
   const handleShowAll = () => {
     window.open('/repos', '_blank')
+    success('Opening all repositories in new tab')
   }
 
   // Show error state if there's an error
