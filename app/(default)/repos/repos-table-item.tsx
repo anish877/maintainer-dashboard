@@ -1,17 +1,27 @@
 import Image from 'next/image'
+import { useRouter } from 'next/navigation'
 import { Repo } from './repos-table'
 import { ReposProperties } from './repos-properties'
 
 interface ReposTableItemProps {
-  repo: Repo
+  repo: Repo | any // Allow both dummy data and GitHub repo data
   onCheckboxChange: (id: number, checked: boolean) => void
   isSelected: boolean
 }
 
 export default function ReposTableItem({ repo, onCheckboxChange, isSelected }: ReposTableItemProps) {
+  const router = useRouter()
 
   const handleCheckboxChange = (e: React.ChangeEvent<HTMLInputElement>) => {        
     onCheckboxChange(repo.id, e.target.checked)
+  }
+
+  const handleRepoClick = () => {
+    // Handle both dummy data and GitHub repo data
+    const repoName = repo.name || repo.order
+    if (repoName) {
+      router.push(`/${repoName}/dashboard`)
+    }
   }
 
   const { 
@@ -21,10 +31,19 @@ export default function ReposTableItem({ repo, onCheckboxChange, isSelected }: R
     typeIcon,    
   } = ReposProperties()
 
+  // Helper function to determine if this is GitHub data or dummy data
+  const isGitHubRepo = repo.full_name || repo.html_url
+  const repoName = repo.name || repo.order
+  const repoDate = isGitHubRepo ? new Date(repo.created_at).toLocaleDateString() : repo.date
+  const repoDescription = repo.description || 'No description available'
+  const repoLanguage = repo.language || repo.items
+  const repoVisibility = isGitHubRepo ? (repo.private ? 'Private' : 'Public') : repo.location
+  const repoStars = isGitHubRepo ? repo.stargazers_count?.toLocaleString() || '0' : repo.total
+
   return (
     <tbody className="text-sm">
       {/* Row */}
-      <tr>
+      <tr className="cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors" onClick={handleRepoClick}>
         <td className="px-2 first:pl-5 last:pr-5 py-3 whitespace-nowrap w-px">
           <div className="flex items-center">
             <label className="inline-flex">
@@ -36,28 +55,40 @@ export default function ReposTableItem({ repo, onCheckboxChange, isSelected }: R
         <td className="px-2 first:pl-5 last:pr-5 py-3 whitespace-nowrap">
           <div className="flex items-center text-gray-800">
             <div className="w-10 h-10 shrink-0 flex items-center justify-center bg-gray-100 dark:bg-gray-700 rounded-full mr-2 sm:mr-3">
-              <Image className="ml-1" src={repo.image} width={20} height={20} alt={repo.order} />
+              {isGitHubRepo ? (
+                <div className="text-lg">📁</div>
+              ) : (
+                <Image className="ml-1" src={repo.image} width={20} height={20} alt={repoName} />
+              )}
             </div>
-            <div className="font-medium text-sky-600">{repo.order}</div>
+            <div className="font-medium text-sky-600 hover:text-sky-700">{repoName}</div>
           </div>
         </td>
         <td className="px-2 first:pl-5 last:pr-5 py-3 whitespace-nowrap">
-          <div>{repo.date}</div>
+          <div>{repoDate}</div>
         </td>
         <td className="px-2 first:pl-5 last:pr-5 py-3 whitespace-nowrap">
-          <div className="font-medium text-gray-800 dark:text-gray-100">{repo.customer}</div>
+          <div className="font-medium text-gray-800 dark:text-gray-100">
+            {isGitHubRepo ? (repo.owner || 'Unknown') : repo.customer}
+          </div>
         </td>
         <td className="px-2 first:pl-5 last:pr-5 py-3 whitespace-nowrap">
-          <div className="text-left font-medium text-green-600">{repo.total}</div>
+          <div className="text-left font-medium text-green-600">{repoStars}</div>
         </td>
         <td className="px-2 first:pl-5 last:pr-5 py-3 whitespace-nowrap">
-          <div className={`inline-flex font-medium rounded-full text-center px-2.5 py-0.5 ${statusColor(repo.status)}`}>{repo.status}</div>
+          <div className={`inline-flex font-medium rounded-full text-center px-2.5 py-0.5 ${
+            isGitHubRepo 
+              ? (repo.private ? 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200' : 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200')
+              : statusColor(repo.status)
+          }`}>
+            {isGitHubRepo ? repoVisibility : repo.status}
+          </div>
         </td>
         <td className="px-2 first:pl-5 last:pr-5 py-3 whitespace-nowrap">
-          <div className="text-center">{repo.items}</div>
+          <div className="text-center">{repoLanguage}</div>
         </td>
         <td className="px-2 first:pl-5 last:pr-5 py-3 whitespace-nowrap">
-          <div className="text-left">{repo.location}</div>
+          <div className="text-left">{repoVisibility}</div>
         </td>
         <td className="px-2 first:pl-5 last:pr-5 py-3 whitespace-nowrap">
           <div className="flex items-center">

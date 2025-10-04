@@ -40,6 +40,37 @@ function ReposContent() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
+  useEffect(() => {
+    if (status === 'authenticated') {
+      fetchRepositories()
+    } else if (status === 'unauthenticated') {
+      setRepos(defaultRepos)
+      setLoading(false)
+    }
+  }, [status])
+
+  const fetchRepositories = async () => {
+    try {
+      setLoading(true)
+      setError(null)
+      
+      const response = await fetch('/api/github/analytics')
+      
+      if (!response.ok) {
+        throw new Error('Failed to fetch repositories')
+      }
+      
+      const data = await response.json()
+      setRepos(data.stats?.recentActivity || [])
+    } catch (err) {
+      console.error('Error fetching repositories:', err)
+      setError(err instanceof Error ? err.message : 'Failed to fetch repositories')
+      setRepos(defaultRepos) // Fallback to dummy data
+    } finally {
+      setLoading(false)
+    }
+  }
+
   // Default dummy data for when not authenticated or loading
   const defaultRepos = [
     {
@@ -183,7 +214,9 @@ function ReposContent() {
   // Function to format stars count
   const formatStars = (stars: number) => {
     if (stars >= 1000) {
-      return `${(stars / 1000).toFixed(1)}k`
+      const formatted = (stars / 1000).toFixed(1)
+      // Remove .0 suffix for whole numbers
+      return formatted.endsWith('.0') ? formatted.slice(0, -2) + 'k' : formatted + 'k'
     }
     return stars.toString()
   }
@@ -328,7 +361,7 @@ function ReposContent() {
       {/* Pagination */}
       {!loading && (
         <div className="mt-8">
-          <PaginationClassic />
+          <PaginationClassic totalItems={repos.length} />
         </div>
       )}
     </div>

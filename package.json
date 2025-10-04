@@ -6,7 +6,11 @@
     "dev": "next dev --turbopack",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "triage:example": "tsx examples/issue-triage-example.ts",
+    "triage:single": "node scripts/ai-triage.js",
+    "triage:comment": "node scripts/add-triage-comment.js",
+    "triage:setup": "node scripts/setup-triage.js"
   },
   "dependencies": {
     "@ai-sdk/openai": "^2.0.42",

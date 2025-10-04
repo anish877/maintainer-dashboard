@@ -1,113 +1,80 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import Tooltip from '@/components/tooltip'
-import RealtimeChart from '@/components/charts/realtime-chart'
-import { chartAreaGradient } from '@/components/charts/chartjs-config'
-
-// Import utilities
-import { adjustColorOpacity, getCssVariable } from '@/components/utils/utils'
+import EditMenu from '@/components/edit-menu'
+import { useGitHubAnalytics } from '@/hooks/use-github-analytics'
 
 export default function DashboardCard05() {
+  const { stats, loading } = useGitHubAnalytics()
 
-  // IMPORTANT:
-  // Code below is for demo purpose only, and it's not covered by support.
-  // If you need to replace dummy data with real data,
-  // refer to Chart.js documentation: https://www.chartjs.org/docs/latest
+  if (loading) {
+    return (
+      <div className="flex flex-col col-span-full sm:col-span-6 xl:col-span-4 bg-white dark:bg-gray-800 shadow-sm rounded-xl">
+        <div className="px-5 pt-5">
+          <header className="flex justify-between items-start mb-2">
+            <h2 className="text-lg font-semibold text-gray-800 dark:text-gray-100 mb-2">GitHub Overview</h2>
+          </header>
+          <div className="animate-pulse space-y-4">
+            {[...Array(4)].map((_, i) => (
+              <div key={i} className="flex items-center justify-between">
+                <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-20"></div>
+                <div className="h-6 bg-gray-200 dark:bg-gray-700 rounded w-12"></div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    )
+  }
 
-  // Fake real-time data
-  const [counter, setCounter] = useState(0)
-  const [increment, setIncrement] = useState(0)
-  const [range, setRange] = useState(35)
-
-  // Dummy data to be looped
-  const data = [
-    57.81, 57.75, 55.48, 54.28, 53.14, 52.25, 51.04, 52.49, 55.49, 56.87,
-    53.73, 56.42, 58.06, 55.62, 58.16, 55.22, 58.67, 60.18, 61.31, 63.25,
-    65.91, 64.44, 65.97, 62.27, 60.96, 59.34, 55.07, 59.85, 53.79, 51.92,
-    50.95, 49.65, 48.09, 49.81, 47.85, 49.52, 50.21, 52.22, 54.42, 53.42,
-    50.91, 58.52, 53.37, 57.58, 59.09, 59.36, 58.71, 59.42, 55.93, 57.71,
-    50.62, 56.28, 57.37, 53.08, 55.94, 55.82, 53.94, 52.65, 50.25,
+  const statsData = [
+    {
+      label: 'Total Repositories',
+      value: stats?.totalRepos || 0,
+      icon: '📁',
+      color: 'text-blue-600'
+    },
+    {
+      label: 'Total Stars',
+      value: stats?.totalStars?.toLocaleString() || '0',
+      icon: '⭐',
+      color: 'text-yellow-600'
+    },
+    {
+      label: 'Total Forks',
+      value: stats?.totalForks?.toLocaleString() || '0',
+      icon: '🍴',
+      color: 'text-green-600'
+    },
+    {
+      label: 'Total Commits',
+      value: stats?.totalCommits?.toLocaleString() || '0',
+      icon: '💾',
+      color: 'text-purple-600'
+    }
   ]
 
-  const [slicedData, setSlicedData] = useState(data.slice(0, range))
-
-  // Generate fake dates from now to back in time
-  const generateDates = (): Date[] => {
-    const now: Date = new Date()
-    const dates: Date[] = []
-
-    data.forEach((v: any, i: number) => {
-      dates.push(new Date(now.getTime() - 2000 - i * 2000))
-    })
-
-    return dates
-  }
-
-  const [slicedLabels, setSlicedLabels] = useState(generateDates().slice(0, range).reverse())
-
-  // Fake update every 2 seconds
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setCounter(counter + 1)
-    }, 2000)
-    return () => clearInterval(interval)
-  }, [counter])
-
-  // Loop through data array and update
-  useEffect(() => {
-    setIncrement(increment + 1)
-    if (increment + range < data.length) {
-      setSlicedData(([x, ...slicedData]) => [...slicedData, data[increment + range]])
-    } else {
-      setIncrement(0)
-      setRange(0)
-    }
-    setSlicedLabels(([x, ...slicedLabels]) => [...slicedLabels, new Date()])
-    return () => setIncrement(0)
-  }, [counter])
-
-  const chartData = {
-    labels: slicedLabels,
-    datasets: [
-      // Indigo line
-      {
-        data: slicedData,
-        fill: true,
-        backgroundColor: function(context: any) {
-          const chart = context.chart;
-          const {ctx, chartArea} = chart;
-          const gradientOrColor = chartAreaGradient(ctx, chartArea, [
-            { stop: 0, color: adjustColorOpacity(getCssVariable('--color-violet-500'), 0) },
-            { stop: 1, color: adjustColorOpacity(getCssVariable('--color-violet-500'), 0.2) }
-          ]);
-          return gradientOrColor || 'transparent';
-        },     
-        borderColor: getCssVariable('--color-violet-500'),
-        borderWidth: 2,
-        pointRadius: 0,
-        pointHoverRadius: 3,
-        pointBackgroundColor: getCssVariable('--color-violet-500'),
-        pointHoverBackgroundColor: getCssVariable('--color-violet-500'),
-        pointBorderWidth: 0,
-        pointHoverBorderWidth: 0,
-        clip: 20,
-        tension: 0.2,
-      },
-    ],
-  }
-
   return(
-    <div className="flex flex-col col-span-full sm:col-span-6 bg-white dark:bg-gray-800 shadow-sm rounded-xl">
-      <header className="px-5 py-4 border-b border-gray-100 dark:border-gray-700/60 flex items-center">
-        <h2 className="font-semibold text-gray-800 dark:text-gray-100">Real Time Value</h2>
-        <Tooltip className="ml-2">
-          <div className="text-xs text-center whitespace-nowrap">Built with <a className="underline" href="https://www.chartjs.org/" target="_blank" rel="noreferrer">Chart.js</a></div>
-        </Tooltip>
-      </header>
-      {/* Chart built with Chart.js 3 */}
-      {/* Change the height attribute to adjust the chart height */}
-      <RealtimeChart data={chartData} width={595} height={248} />
+    <div className="flex flex-col col-span-full sm:col-span-6 xl:col-span-4 bg-white dark:bg-gray-800 shadow-sm rounded-xl">
+      <div className="px-5 pt-5">
+        <header className="flex justify-between items-start mb-2">
+          <h2 className="text-lg font-semibold text-gray-800 dark:text-gray-100 mb-2">GitHub Overview</h2>
+          {/* Menu button */}
+          <EditMenu align="right" />
+        </header>
+        <div className="space-y-4">
+          {statsData.map((stat, index) => (
+            <div key={index} className="flex items-center justify-between">
+              <div className="flex items-center">
+                <span className="text-2xl mr-3">{stat.icon}</span>
+                <span className="text-sm font-medium text-gray-600 dark:text-gray-400">{stat.label}</span>
+              </div>
+              <div className={`text-lg font-bold ${stat.color}`}>
+                {stat.value}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
     </div>
   )
 }

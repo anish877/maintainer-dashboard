@@ -45,16 +45,12 @@ export const authOptions: NextAuthOptions = {
       return true
     },
     async redirect({ url, baseUrl }) {
-      console.log("🔄 Redirect callback:", { url, baseUrl })
-      
       // Redirect to dashboard after successful signin
       if (url.startsWith("/")) return `${baseUrl}${url}`
       else if (new URL(url).origin === baseUrl) return url
       return `${baseUrl}/dashboard`
     },
     async session({ session, token }) {
-      console.log("📱 Session callback:", { sessionUserId: session.user?.id, tokenUserId: token.sub })
-      
       // Add user ID and GitHub info to session
       if (session.user && token.sub) {
         session.user.id = token.sub
@@ -75,12 +71,71 @@ export const authOptions: NextAuthOptions = {
       }
       return session
     },
-    async jwt({ token, user, account }) {
-      console.log("🎫 JWT callback:", { userId: user?.id, accountProvider: account?.provider })
-      
+    async jwt({ token, user, account, profile }) {
       // Persist the OAuth access_token to the token right after signin
       if (account) {
         token.accessToken = account.access_token
+        
+        // Store GitHub-specific data when account is present (during sign-in)
+        if (account.provider === "github" && profile) {
+          const githubProfile = profile as any
+          console.log("🔐 JWT callback - GitHub profile data:", {
+            id: githubProfile.id,
+            login: githubProfile.login,
+            email: githubProfile.email,
+            name: githubProfile.name,
+            hasAccessToken: !!account.access_token
+          })
+          
+          try {
+            // Find user by email (since user.id might not be available yet)
+            const existingUser = await prisma.user.findFirst({
+              where: {
+                OR: [
+                  { githubId: parseInt(githubProfile.id as string) },
+                  { email: githubProfile.email }
+                ]
+              }
+            })
+
+            if (existingUser) {
+              console.log("🔐 JWT callback - Updating existing user:", { userId: existingUser.id, username: githubProfile.login })
+              const updatedUser = await prisma.user.update({
+                where: { id: existingUser.id },
+                data: {
+                  githubId: parseInt(githubProfile.id as string),
+                  username: githubProfile.login || null,
+                  email: githubProfile.email || null,
+                  name: githubProfile.name || null,
+                  image: githubProfile.avatar_url || null,
+                  bio: githubProfile.bio || null,
+                  accessToken: account.access_token || null,
+                  tokenExpiry: account.expires_at ? new Date(account.expires_at * 1000) : null,
+                  lastLoginAt: new Date(),
+                }
+              })
+              console.log("✅ JWT callback - User updated successfully:", { username: updatedUser.username })
+            } else {
+              console.log("🔐 JWT callback - Creating new user:", { username: githubProfile.login })
+              const newUser = await prisma.user.create({
+                data: {
+                  githubId: parseInt(githubProfile.id as string),
+                  username: githubProfile.login || null,
+                  email: githubProfile.email || null,
+                  name: githubProfile.name || null,
+                  image: githubProfile.avatar_url || null,
+                  bio: githubProfile.bio || null,
+                  accessToken: account.access_token || null,
+                  tokenExpiry: account.expires_at ? new Date(account.expires_at * 1000) : null,
+                  lastLoginAt: new Date(),
+                }
+              })
+              console.log("✅ JWT callback - User created successfully:", { username: newUser.username })
+            }
+          } catch (error) {
+            console.error("❌ JWT callback - Error updating user data:", error)
+          }
+        }
       }
       
       // Add user ID to token
@@ -93,9 +148,24 @@ export const authOptions: NextAuthOptions = {
   },
   events: {
     async signIn({ user, account, profile, isNewUser }) {
+      console.log("🔐 SignIn event triggered:", { 
+        provider: account?.provider, 
+        hasProfile: !!profile,
+        hasAccount: !!account,
+        isNewUser
+      })
+      
       // Store GitHub-specific data after successful sign in
       if (account?.provider === "github" && profile) {
         const githubProfile = profile as any
+        console.log("🔐 GitHub profile data:", {
+          id: githubProfile.id,
+          login: githubProfile.login,
+          email: githubProfile.email,
+          name: githubProfile.name,
+          hasAccessToken: !!account.access_token
+        })
+        
         try {
           // First try to find user by githubId, then by email
           const existingUser = await prisma.user.findFirst({
@@ -108,8 +178,9 @@ export const authOptions: NextAuthOptions = {
           })
 
           if (existingUser) {
+            console.log("🔐 Updating existing user:", { userId: existingUser.id, username: githubProfile.login })
             // Update existing user
-            await prisma.user.update({
+            const updatedUser = await prisma.user.update({
               where: { id: existingUser.id },
               data: {
                 githubId: parseInt(githubProfile.id as string),
@@ -123,9 +194,11 @@ export const authOptions: NextAuthOptions = {
                 lastLoginAt: new Date(),
               }
             })
+            console.log("✅ User updated successfully:", { username: updatedUser.username })
           } else {
+            console.log("🔐 Creating new user:", { username: githubProfile.login })
             // Create new user
-            await prisma.user.create({
+            const newUser = await prisma.user.create({
               data: {
                 githubId: parseInt(githubProfile.id as string),
                 username: githubProfile.login || null,
@@ -138,6 +211,7 @@ export const authOptions: NextAuthOptions = {
                 lastLoginAt: new Date(),
               }
             })
+            console.log("✅ User created successfully:", { username: newUser.username })
           }
         } catch (error) {
           console.error("❌ Error updating user data:", error)
