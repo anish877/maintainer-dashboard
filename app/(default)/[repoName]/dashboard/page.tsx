@@ -53,25 +53,51 @@ export default function RepoDashboard() {
   }
 
   if (error || !repo) {
+    const isAuthError = error?.includes('Authentication required') || error?.includes('GitHub token') || error?.includes('Access denied')
+    
     return (
       <div className="px-4 sm:px-6 lg:px-8 py-8 w-full max-w-[96rem] mx-auto">
         <div className="flex items-center justify-center min-h-[400px]">
-        <div className="text-center">
+        <div className="text-center max-w-md">
           <div className="text-red-500 mb-4 text-4xl">
-            ⚠️
+            {isAuthError ? '🔐' : '⚠️'}
           </div>
             <h2 className="text-xl font-semibold text-gray-800 dark:text-gray-100 mb-2">
-              Repository Not Found
+              {isAuthError ? 'Authentication Issue' : 'Repository Not Found'}
             </h2>
-            <p className="text-gray-500 dark:text-gray-400 mb-4">
-              {error || 'The requested repository could not be found.'}
+            <p className="text-gray-500 dark:text-gray-400 mb-6">
+              {isAuthError 
+                ? 'Your GitHub token may have expired or lacks permissions. Please sign out and sign back in to refresh your access.'
+                : error || 'The requested repository could not be found.'
+              }
             </p>
-            <button
-              onClick={() => router.back()}
-              className="inline-flex items-center gap-2 bg-purple-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-purple-700 transition-colors"
-            >
-              ← Go Back
-            </button>
+            <div className="space-y-3">
+              {isAuthError && (
+                <>
+                  <button
+                    onClick={() => {
+                      // Sign out and redirect to sign in
+                      window.location.href = '/api/auth/signout'
+                    }}
+                    className="inline-flex items-center gap-2 bg-red-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-red-700 transition-colors w-full justify-center"
+                  >
+                    🔄 Sign Out & Refresh Token
+                  </button>
+                  <button
+                    onClick={() => router.push('/repos')}
+                    className="inline-flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-blue-700 transition-colors w-full justify-center"
+                  >
+                    📋 View All Repositories
+                  </button>
+                </>
+              )}
+              <button
+                onClick={() => router.back()}
+                className="inline-flex items-center gap-2 bg-gray-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-gray-700 transition-colors w-full justify-center"
+              >
+                ← Go Back
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -121,6 +147,12 @@ export default function RepoDashboard() {
             className="inline-flex items-center gap-2 bg-red-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-red-700 transition-colors"
           >
             🛡️ Spam Detection
+          </button>
+          <button
+            onClick={() => router.push(`/${repoName}/heatmaps`)}
+            className="inline-flex items-center gap-2 bg-emerald-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-emerald-700 transition-colors"
+          >
+            📊 Contribution Heatmaps
           </button>
           <a
             href={repo.html_url}
@@ -304,6 +336,15 @@ export default function RepoDashboard() {
               <span className="text-lg">🛡️</span>
               <span className="text-sm font-medium text-red-800 dark:text-red-200">
                 Spam Detection
+              </span>
+            </button>
+            <button
+              onClick={() => router.push(`/${repoName}/heatmaps`)}
+              className="flex items-center gap-3 p-3 rounded-lg bg-emerald-50 dark:bg-emerald-900/20 hover:bg-emerald-100 dark:hover:bg-emerald-900/30 transition-colors w-full text-left"
+            >
+              <span className="text-lg">📊</span>
+              <span className="text-sm font-medium text-emerald-800 dark:text-emerald-200">
+                Contribution Heatmaps
               </span>
             </button>
             <a

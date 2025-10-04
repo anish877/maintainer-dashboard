@@ -40,6 +40,40 @@ export async function GET(
       return NextResponse.json({ error: 'GitHub access token not found' }, { status: 400 })
     }
 
+    // Validate the token by checking if it's still valid
+    console.log('🔍 [DEBUG] Validating GitHub token...')
+    try {
+      const tokenValidationResponse = await fetch('https://api.github.com/user', {
+        headers: {
+          'Authorization': `Bearer ${user.accessToken}`,
+          'Accept': 'application/vnd.github.v3+json',
+          'User-Agent': 'GitHub-Dashboard'
+        }
+      })
+      
+      if (!tokenValidationResponse.ok) {
+        console.log('❌ [DEBUG] Token validation failed:', tokenValidationResponse.status)
+        
+        // Try to get more details about the token error
+        try {
+          const errorData = await tokenValidationResponse.json()
+          console.log('❌ [DEBUG] Token error details:', errorData)
+        } catch (e) {
+          console.log('❌ [DEBUG] Could not parse token error response')
+        }
+        
+        // For now, let's continue with the request instead of failing early
+        // The actual API call will handle the 403 error more gracefully
+        console.log('⚠️ [DEBUG] Token validation failed, but continuing with request...')
+      } else {
+        console.log('✅ [DEBUG] Token validation successful')
+      }
+    } catch (error) {
+      console.log('❌ [DEBUG] Token validation error:', error)
+      // Continue with the request even if validation fails
+      console.log('⚠️ [DEBUG] Token validation error, but continuing with request...')
+    }
+
     // Always ensure we have a username - fetch from GitHub API if null
     let username = user.username
     if (!username) {
@@ -105,6 +139,24 @@ export async function GET(
       if (response.status === 404) {
         console.log('❌ [DEBUG] Repository not found (404)')
         return NextResponse.json({ error: 'Repository not found' }, { status: 404 })
+      }
+      if (response.status === 403) {
+        console.log('❌ [DEBUG] GitHub API 403 - Access denied. This could be due to:')
+        console.log('  1. Repository is private and token lacks access')
+        console.log('  2. Token has expired')
+        console.log('  3. Token lacks required scopes')
+        
+        // Try to get more details about the 403 error
+        try {
+          const errorData = await response.json()
+          console.log('❌ [DEBUG] 403 Error details:', errorData)
+        } catch (e) {
+          console.log('❌ [DEBUG] Could not parse 403 error response')
+        }
+        
+        return NextResponse.json({ 
+          error: 'Access denied. The repository may be private or your GitHub token may have expired. Please sign out and sign back in to refresh your token.' 
+        }, { status: 403 })
       }
       console.log('❌ [DEBUG] GitHub API error:', response.status)
       throw new Error(`GitHub API error: ${response.status}`)
