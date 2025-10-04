@@ -9,25 +9,30 @@ export async function GET(
     const resolvedParams = await params;
     
     // Try to find in pending comments first
-    let issue = await prisma.pendingComment.findUnique({
+    let pendingComment = await prisma.pendingComment.findUnique({
       where: { id: resolvedParams.id }
     });
 
     // If not found, try completeness analysis
-    if (!issue) {
-      issue = await prisma.completenessAnalysis.findUnique({
+    let completenessAnalysis = null;
+    if (!pendingComment) {
+      completenessAnalysis = await prisma.completenessAnalysis.findUnique({
         where: { id: resolvedParams.id }
       });
     }
 
-    if (!issue) {
+    if (!pendingComment && !completenessAnalysis) {
       return NextResponse.json(
         { error: 'Issue not found' },
         { status: 404 }
       );
     }
 
-    return NextResponse.json({ issue });
+    return NextResponse.json({ 
+      pendingComment,
+      completenessAnalysis,
+      found: !!(pendingComment || completenessAnalysis)
+    });
 
   } catch (error) {
     console.error('Error fetching issue:', error);

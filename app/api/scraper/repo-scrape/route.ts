@@ -37,7 +37,7 @@ export async function POST(request: NextRequest) {
     
     // Validate sources
     const validSources = ['reddit', 'stackoverflow'];
-    const invalidSources = scrapingSources.filter(s => !validSources.includes(s));
+    const invalidSources = scrapingSources.filter((s: string) => !validSources.includes(s));
     
     if (invalidSources.length > 0) {
       return NextResponse.json(

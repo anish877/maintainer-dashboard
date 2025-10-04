@@ -64,8 +64,8 @@ export interface IssueData {
   url: string
   author: string
   repository: string
-  createdAt: string
-  labels: string[]
+  createdAt?: string
+  labels?: string[]
 }
 
 export interface GeneratedComment {
@@ -399,7 +399,7 @@ export class TemplateEngine {
   /**
    * Check if template conditions are met
    */
-  private matchesConditions(
+  public matchesConditions(
     template: CompletenessTemplate,
     issueData: IssueData,
     analysis: CompletenessAnalysis
@@ -537,7 +537,7 @@ export class TemplateEngine {
   /**
    * Get default styling configuration
    */
-  private getDefaultStyling(): TemplateStyle {
+  public getDefaultStyling(): TemplateStyle {
     return {
       primaryColor: '#8B5CF6',
       secondaryColor: '#6B7280',

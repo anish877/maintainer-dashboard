@@ -11,8 +11,8 @@ const DEFAULT_REDDIT_CONFIG = {
 
 const DEFAULT_STACKOVERFLOW_CONFIG = {
   tags: ['javascript', 'reactjs', 'nodejs'],
-  searchTerms: ['bug', 'error', 'issue'],
-  maxQuestions: 20
+  keywords: ['bug', 'error', 'issue'],
+  maxQuestionsPerTag: 20
 };
 import { processNewPosts } from '@/lib/ai/classifier';
 
@@ -27,10 +27,10 @@ export async function GET(request: Request) {
   
   const startTime = Date.now();
   const results = {
-    reddit: { success: false, posts: 0, error: null },
-    twitter: { success: false, posts: 0, error: null },
-    stackoverflow: { success: false, posts: 0, error: null },
-    ai: { success: false, processed: 0, error: null },
+    reddit: { success: false, posts: 0, error: null as string | null },
+    twitter: { success: false, posts: 0, error: null as string | null },
+    stackoverflow: { success: false, posts: 0, error: null as string | null },
+    ai: { success: false, processed: 0, error: null as string | null },
     totalDuration: 0
   };
   
@@ -131,9 +131,7 @@ export async function POST(request: Request) {
         break;
         
       case 'twitter':
-        const twitterScraper = new TwitterScraper(DEFAULT_TWITTER_CONFIG);
-        await twitterScraper.scrape();
-        result = { message: 'Twitter scraping completed' };
+        result = { message: 'Twitter scraping not implemented' };
         break;
         
       case 'stackoverflow':

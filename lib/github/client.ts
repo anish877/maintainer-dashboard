@@ -11,10 +11,10 @@ export interface GitHubIssueData {
 }
 
 export class GitHubClient {
-  private octokit: Octokit;
+  private _octokit: Octokit;
 
   constructor(token?: string) {
-    this.octokit = new Octokit({
+    this._octokit = new Octokit({
       auth: token || process.env.GITHUB_TOKEN,
     });
   }
@@ -45,13 +45,18 @@ export class GitHubClient {
     throw new Error('No valid GitHub token found. Please sign in with GitHub or set GITHUB_TOKEN environment variable.');
   }
 
+  // Public method to access the octokit instance
+  get octokit() {
+    return this._octokit;
+  }
+
   async createIssue(
     owner: string,
     repo: string,
     issueData: GitHubIssueData
   ): Promise<{ id: number; url: string; number: number }> {
     try {
-      const response = await this.octokit.rest.issues.create({
+      const response = await this._octokit.rest.issues.create({
         owner,
         repo,
         title: issueData.title,
@@ -78,7 +83,7 @@ export class GitHubClient {
     updates: Partial<GitHubIssueData>
   ): Promise<void> {
     try {
-      await this.octokit.rest.issues.update({
+      await this._octokit.rest.issues.update({
         owner,
         repo,
         issue_number: issueNumber,
@@ -97,7 +102,7 @@ export class GitHubClient {
     reason: 'completed' | 'not_planned' = 'completed'
   ): Promise<void> {
     try {
-      await this.octokit.rest.issues.update({
+      await this._octokit.rest.issues.update({
         owner,
         repo,
         issue_number: issueNumber,
@@ -117,7 +122,7 @@ export class GitHubClient {
     body: string
   ): Promise<void> {
     try {
-      await this.octokit.rest.issues.createComment({
+      await this._octokit.rest.issues.createComment({
         owner,
         repo,
         issue_number: issueNumber,
@@ -131,7 +136,7 @@ export class GitHubClient {
 
   async getRepository(owner: string, repo: string) {
     try {
-      const response = await this.octokit.rest.repos.get({
+      const response = await this._octokit.rest.repos.get({
         owner,
         repo,
       });
@@ -148,11 +153,18 @@ export class GitHubClient {
     per_page?: number;
   }) {
     try {
-      const response = await this.octokit.rest.issues.listForRepo({
+      const apiOptions: any = {
         owner,
         repo,
         ...options,
-      });
+      };
+      
+      // Convert labels array to comma-separated string if provided
+      if (apiOptions.labels && Array.isArray(apiOptions.labels)) {
+        apiOptions.labels = apiOptions.labels.join(',');
+      }
+      
+      const response = await this._octokit.rest.issues.listForRepo(apiOptions);
       return response.data;
     } catch (error) {
       console.error('Error listing issues:', error);

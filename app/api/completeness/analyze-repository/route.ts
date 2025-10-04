@@ -13,6 +13,22 @@ import { completenessAnalyzer, IssueData, CompletenessAnalysis } from '@/lib/ai/
 import { templateEngine } from '@/lib/templates/template-engine'
 import { prisma } from '@/lib/prisma'
 
+// Type for the analysis result with issue metadata
+interface IssueAnalysisResult {
+  issueNumber: number
+  title: string
+  url: string
+  author: string
+  createdAt: string
+  updatedAt: string
+  labels: string[]
+  completeness: CompletenessAnalysis
+  qualityScore: number
+  isComplete: boolean
+  missingElements: string[]
+  suggestions: string[]
+}
+
 export async function POST(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions)
@@ -88,7 +104,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Analyze issues in batches to respect rate limits and provide progress
-    const analysisResults: CompletenessAnalysis[] = []
+    const analysisResults: IssueAnalysisResult[] = []
     let completeCount = 0
     let highQualityCount = 0
     let lowQualityCount = 0

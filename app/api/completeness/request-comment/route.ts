@@ -170,7 +170,7 @@ export async function POST(request: NextRequest) {
         issueUrl: issue.html_url,
         issueAuthor: issue.user?.login || 'unknown',
         issueBody: issue.body,
-        completenessAnalysis: analysis,
+        completenessAnalysis: analysis as any,
         qualityScore: analysis.overallScore,
         missingElements: analysis.missingElements,
         templateId: selectedTemplate.id,

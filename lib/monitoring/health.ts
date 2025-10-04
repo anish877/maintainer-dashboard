@@ -78,7 +78,7 @@ export async function getScraperHealth(): Promise<ScraperHealth[]> {
         status = 'warning';
         errorMessage = `Moderate success rate: ${successRate.toFixed(1)}%`;
       } else if (lastRun && (Date.now() - lastRun.getTime()) > 24 * 60 * 60 * 1000) {
-        status = status === 'critical' ? 'critical' : 'warning';
+        status = 'warning';
         errorMessage = 'No runs in the last 24 hours';
       }
 
@@ -219,7 +219,7 @@ export async function getGitHubHealth() {
     }
     
     if (lastSync && (Date.now() - lastSync.updatedAt.getTime()) > 7 * 24 * 60 * 60 * 1000) {
-      status = status === 'critical' ? 'critical' : 'warning';
+      status = 'warning';
     }
 
     return {

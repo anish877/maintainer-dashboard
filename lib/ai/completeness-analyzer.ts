@@ -39,6 +39,8 @@ export interface IssueData {
   url: string
   author: string
   repository: string
+  createdAt?: string
+  labels?: string[]
 }
 
 export class CompletenessAnalyzer {
@@ -65,7 +67,7 @@ export class CompletenessAnalyzer {
       const content = `${issueData.title}\n\n${issueData.body}`
       
       // If templates are provided, use them to guide analysis
-      const templateContext = availableTemplates ? this.buildTemplateContext(availableTemplates) : null
+      const templateContext = availableTemplates ? this.buildTemplateContext(availableTemplates) : undefined
       
       // Analyze each completeness aspect in parallel for efficiency
       const [
@@ -469,12 +471,12 @@ Conditions: ${JSON.stringify(template.conditions || {})}`
         },
         update: {
           overallScore: analysis.overallScore,
-          reproductionSteps: analysis.reproductionSteps,
-          expectedBehavior: analysis.expectedBehavior,
-          versionInfo: analysis.versionInfo,
-          environmentDetails: analysis.environmentDetails,
-          errorLogs: analysis.errorLogs,
-          screenshots: analysis.screenshots,
+          reproductionSteps: analysis.reproductionSteps as any,
+          expectedBehavior: analysis.expectedBehavior as any,
+          versionInfo: analysis.versionInfo as any,
+          environmentDetails: analysis.environmentDetails as any,
+          errorLogs: analysis.errorLogs as any,
+          screenshots: analysis.screenshots as any,
           confidence: analysis.confidence,
           processingTime: analysis.processingTime,
           analysisVersion: this.analysisVersion
@@ -483,12 +485,12 @@ Conditions: ${JSON.stringify(template.conditions || {})}`
           repositoryId: repository.id,
           issueNumber: issueData.number,
           overallScore: analysis.overallScore,
-          reproductionSteps: analysis.reproductionSteps,
-          expectedBehavior: analysis.expectedBehavior,
-          versionInfo: analysis.versionInfo,
-          environmentDetails: analysis.environmentDetails,
-          errorLogs: analysis.errorLogs,
-          screenshots: analysis.screenshots,
+          reproductionSteps: analysis.reproductionSteps as any,
+          expectedBehavior: analysis.expectedBehavior as any,
+          versionInfo: analysis.versionInfo as any,
+          environmentDetails: analysis.environmentDetails as any,
+          errorLogs: analysis.errorLogs as any,
+          screenshots: analysis.screenshots as any,
           confidence: analysis.confidence,
           processingTime: analysis.processingTime,
           analysisVersion: this.analysisVersion
