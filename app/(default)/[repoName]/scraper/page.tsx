@@ -66,6 +66,14 @@ export default function RepoScraperPage() {
   const [repo, setRepo] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [deepAnalyzing, setDeepAnalyzing] = useState(false);
+  const [filters, setFilters] = useState<{
+    severity: 'all' | 'critical' | 'high' | 'medium' | 'low',
+    source: 'all' | 'reddit' | 'stackoverflow' | 'github',
+    bugOnly: boolean,
+    sortBy: 'relevance' | 'confidence' | 'severity' | 'date'
+  }>({ severity: 'all', source: 'all', bugOnly: false, sortBy: 'relevance' });
+  const [expanded, setExpanded] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     if (repoName) {
@@ -226,6 +234,46 @@ export default function RepoScraperPage() {
     }
   };
 
+  const analyzeRepositoryDeep = async () => {
+    if (!selectedRepo) {
+      alert('Please select a repository first');
+      return;
+    }
+
+    setDeepAnalyzing(true);
+    setScrapingProgress('🕵️ Running deep multi-source analysis...');
+    try {
+      const response = await fetch('/api/simple-scraper/analyze', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          repository: selectedRepo,
+          sources: ['reddit', 'stackoverflow', 'github']
+        })
+      });
+
+      const data = await response.json();
+      if (response.ok && data?.results) {
+        setResults(data.results || []);
+        setScrapingStats({
+          total: data.results?.length || 0,
+          bugs: (data.results || []).filter((r: any) => r.isBug).length,
+          complaints: (data.results || []).filter((r: any) => (r.sentiment ?? 0) < -0.3).length
+        });
+        setScrapingProgress(`✅ Deep analysis found ${data.results?.length || 0} items`);
+      } else {
+        setScrapingProgress('❌ Deep analysis failed');
+        alert(`❌ Error: ${data?.error || data?.message || 'Deep analysis failed'}`);
+      }
+    } catch (error) {
+      console.error('Error in deep analysis:', error);
+      setScrapingProgress('❌ Deep analysis failed');
+      alert('Failed to run deep analysis');
+    } finally {
+      setDeepAnalyzing(false);
+    }
+  };
+
   const generateIssue = async (result: ScrapingResult) => {
     try {
       const response = await fetch('/api/simple-scraper/generate-issue', {
@@ -286,6 +334,30 @@ export default function RepoScraperPage() {
       default: return 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200';
     }
   };
+
+  const filteredAndSortedResults = (() => {
+    let list = [...results];
+    if (filters.severity !== 'all') list = list.filter(r => (r.severity || '').toLowerCase() === filters.severity);
+    if (filters.source !== 'all') list = list.filter(r => (r.source || '').toLowerCase() === filters.source);
+    if (filters.bugOnly) list = list.filter(r => r.isBug);
+
+    switch (filters.sortBy) {
+      case 'confidence':
+        list.sort((a, b) => (b.confidence || 0) - (a.confidence || 0));
+        break;
+      case 'severity': {
+        const rank: Record<string, number> = { critical: 4, high: 3, medium: 2, low: 1 };
+        list.sort((a, b) => (rank[(b.severity || '').toLowerCase()] || 0) - (rank[(a.severity || '').toLowerCase()] || 0));
+        break;
+      }
+      case 'date':
+        list.sort((a, b) => new Date(b.postedAt).getTime() - new Date(a.postedAt).getTime());
+        break;
+      default:
+        break;
+    }
+    return list;
+  })();
 
   if (loading) {
     return (
@@ -474,14 +546,22 @@ export default function RepoScraperPage() {
                 </span>
               )}
             </div>
-
-            <button
-              onClick={analyzeRepository}
-              disabled={scrapingInProgress}
-              className="btn bg-indigo-500 hover:bg-indigo-600 text-white disabled:opacity-50"
-            >
-              {scrapingInProgress ? '⚡ Fast Analysis...' : '⚡ Fast Web Search'}
-            </button>
+            <div className="flex flex-wrap gap-3">
+              <button
+                onClick={analyzeRepository}
+                disabled={scrapingInProgress || deepAnalyzing}
+                className="btn bg-indigo-500 hover:bg-indigo-600 text-white disabled:opacity-50"
+              >
+                {scrapingInProgress ? '⚡ Fast Analysis...' : '⚡ Fast Web Search'}
+              </button>
+              <button
+                onClick={analyzeRepositoryDeep}
+                disabled={deepAnalyzing || scrapingInProgress}
+                className="btn bg-gray-900 hover:bg-gray-800 text-white disabled:opacity-50"
+              >
+                {deepAnalyzing ? '🕵️ Deep Analysis…' : '🕵️ Deep Multi-Source Analysis'}
+              </button>
+            </div>
           </div>
         )}
 
@@ -515,18 +595,61 @@ export default function RepoScraperPage() {
                 <h3 className="text-lg font-medium text-gray-900 dark:text-white">
                   Analysis Results
                 </h3>
-                {scrapingStats && (
-                  <div className="flex space-x-4 text-sm text-gray-600 dark:text-gray-300">
-                    <span>Total: {scrapingStats.total}</span>
-                    <span>Bugs: {scrapingStats.bugs}</span>
-                    <span>Complaints: {scrapingStats.complaints}</span>
+                <div className="flex items-center gap-4">
+                  {scrapingStats && (
+                    <div className="hidden sm:flex space-x-4 text-sm text-gray-600 dark:text-gray-300">
+                      <span>Total: {scrapingStats.total}</span>
+                      <span>Bugs: {scrapingStats.bugs}</span>
+                      <span>Complaints: {scrapingStats.complaints}</span>
+                    </div>
+                  )}
+                  <div className="flex items-center gap-2 text-sm">
+                    <select
+                      value={filters.severity}
+                      onChange={(e) => setFilters(prev => ({ ...prev, severity: e.target.value as any }))}
+                      className="border border-gray-300 dark:border-gray-600 rounded-md px-2 py-1 bg-transparent"
+                    >
+                      <option value="all">All severities</option>
+                      <option value="critical">Critical</option>
+                      <option value="high">High</option>
+                      <option value="medium">Medium</option>
+                      <option value="low">Low</option>
+                    </select>
+                    <select
+                      value={filters.source}
+                      onChange={(e) => setFilters(prev => ({ ...prev, source: e.target.value as any }))}
+                      className="border border-gray-300 dark:border-gray-600 rounded-md px-2 py-1 bg-transparent"
+                    >
+                      <option value="all">All sources</option>
+                      <option value="reddit">Reddit</option>
+                      <option value="stackoverflow">StackOverflow</option>
+                      <option value="github">GitHub</option>
+                    </select>
+                    <select
+                      value={filters.sortBy}
+                      onChange={(e) => setFilters(prev => ({ ...prev, sortBy: e.target.value as any }))}
+                      className="border border-gray-300 dark:border-gray-600 rounded-md px-2 py-1 bg-transparent"
+                    >
+                      <option value="relevance">Sort: Relevance</option>
+                      <option value="confidence">Sort: Confidence</option>
+                      <option value="severity">Sort: Severity</option>
+                      <option value="date">Sort: Date</option>
+                    </select>
+                    <label className="inline-flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={filters.bugOnly}
+                        onChange={(e) => setFilters(prev => ({ ...prev, bugOnly: e.target.checked }))}
+                      />
+                      <span className="text-gray-600 dark:text-gray-300">Bugs only</span>
+                    </label>
                   </div>
-                )}
+                </div>
               </div>
             </div>
             
             <div className="divide-y divide-gray-200 dark:divide-gray-700">
-              {results.map((result) => (
+              {filteredAndSortedResults.map((result) => (
                 <div key={result.id} className="p-6">
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
@@ -559,6 +682,31 @@ export default function RepoScraperPage() {
                       <p className="text-gray-600 dark:text-gray-300 mb-3">
                         {result.summary}
                       </p>
+
+                      <button
+                        onClick={() => setExpanded(prev => ({ ...prev, [result.id]: !prev[result.id] }))}
+                        className="text-sm text-indigo-600 dark:text-indigo-400 hover:underline mb-3"
+                      >
+                        {expanded[result.id] ? 'Hide details' : 'Show details'}
+                      </button>
+                      {expanded[result.id] && (
+                        <div className="text-sm text-gray-600 dark:text-gray-300 mb-3 space-y-2">
+                          <div>
+                            <span className="font-medium">Technical details:</span> {result.technicalDetails || 'N/A'}
+                          </div>
+                          <div className="flex flex-wrap gap-2">
+                            <span className="px-2 py-1 text-xs bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300 rounded">
+                              Affected: {result.affectedArea || 'other'}
+                            </span>
+                            <span className="px-2 py-1 text-xs bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300 rounded">
+                              Impact: {result.userImpact ?? 0}
+                            </span>
+                            <span className="px-2 py-1 text-xs bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300 rounded">
+                              Sentiment: {result.sentiment?.toFixed(2) ?? '0.00'}
+                            </span>
+                          </div>
+                        </div>
+                      )}
                       
                       <div className="flex items-center space-x-4 text-sm text-gray-500 dark:text-gray-400 mb-3">
                         <span>👤 {result.author}</span>
