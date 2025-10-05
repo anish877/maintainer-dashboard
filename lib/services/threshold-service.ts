@@ -135,7 +135,7 @@ export class ThresholdService {
 
   private async handleAutoUnassign(assignment: any) {
     try {
-      console.log(`🚫 Handling auto-unassign for assignment ${assignment.id}`)
+      console.log(`Handling auto-unassign for assignment ${assignment.id}`)
       
       // Update assignment status
       await this.assignmentService.updateStatus(assignment.id, 'AUTO_UNASSIGNED')

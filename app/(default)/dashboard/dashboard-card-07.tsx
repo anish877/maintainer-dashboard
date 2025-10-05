@@ -2,7 +2,8 @@
 
 import { useState } from 'react'
 import { useSession } from 'next-auth/react'
-import { MessageCircle, Send, Bot, User } from 'lucide-react'
+import { useRouter } from 'next/navigation'
+import { MessageCircle, Send, Bot, User, Navigation } from 'lucide-react'
 
 interface Message {
   id: string
@@ -13,6 +14,7 @@ interface Message {
 
 export default function DashboardCard07() {
   const { data: session } = useSession()
+  const router = useRouter()
   const [messages, setMessages] = useState<Message[]>([
     {
       id: '1',
@@ -23,6 +25,20 @@ export default function DashboardCard07() {
   ])
   const [inputValue, setInputValue] = useState('')
   const [isLoading, setIsLoading] = useState(false)
+  const [suggestedRoute, setSuggestedRoute] = useState<string | null>(null)
+
+  const handleRouting = (routing: { suggested: string | null, confidence: number }) => {
+    if (routing.suggested && routing.confidence > 0.5) {
+      setSuggestedRoute(routing.suggested)
+    }
+  }
+
+  const handleNavigateToSuggested = () => {
+    if (suggestedRoute) {
+      router.push(suggestedRoute)
+      setSuggestedRoute(null)
+    }
+  }
 
   const handleSendMessage = async () => {
     if (!inputValue.trim() || isLoading) return
@@ -75,6 +91,11 @@ export default function DashboardCard07() {
       }
 
       setMessages(prev => [...prev, assistantMessage])
+      
+      // Handle routing information if present
+      if (data.routing) {
+        handleRouting(data.routing)
+      }
     } catch (error) {
       console.error('Chat error:', error)
       const errorMessage: Message = {
@@ -156,6 +177,26 @@ export default function DashboardCard07() {
           </div>
         )}
       </div>
+
+      {/* Navigation Suggestion */}
+      {suggestedRoute && (
+        <div className="px-4 py-2 border-t border-gray-100 dark:border-gray-700/60 bg-blue-50 dark:bg-blue-900/20">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Navigation className="w-4 h-4 text-blue-600" />
+              <span className="text-sm text-blue-800 dark:text-blue-200">
+                I can help you navigate to: {suggestedRoute}
+              </span>
+            </div>
+            <button
+              onClick={handleNavigateToSuggested}
+              className="px-3 py-1 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors text-sm"
+            >
+              Go
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Input */}
       <div className="p-4 border-t border-gray-100 dark:border-gray-700/60 flex-shrink-0">

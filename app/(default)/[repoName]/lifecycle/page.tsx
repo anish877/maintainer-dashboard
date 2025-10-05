@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import { useToastNotifications } from '@/lib/toast'
-import { Users, AlertTriangle, BarChart3, RefreshCw, Rocket, MessageSquare } from 'lucide-react'
+import { Users, AlertTriangle, BarChart3, RefreshCw, Rocket, MessageSquare, X } from 'lucide-react'
 
 interface LifecycleAnalysis {
   issueNumber: number;
@@ -193,7 +193,7 @@ export default function IssueLifecyclePage() {
       
     } catch (err) {
       console.error('Error updating issue:', err)
-      showError(`❌ Failed to update issue: ${err instanceof Error ? err.message : 'Unknown error'}`)
+      showError(`Failed to update issue: ${err instanceof Error ? err.message : 'Unknown error'}`)
     } finally {
       setProcessingIssues(prev => {
         const newSet = new Set(prev)
@@ -383,7 +383,7 @@ export default function IssueLifecyclePage() {
                     <svg className="fill-current shrink-0 mr-2" width="16" height="16" viewBox="0 0 16 16">
                       <path d="M8 0C3.58 0 0 3.58 0 8s3.58 8 8 8 8-3.58 8-8-3.58-8-8-8zm0 14c-3.31 0-6-2.69-6-6s2.69-6 6-6 6 2.69 6 6-2.69 6-6 6zm-1-9h2v2H7V5zm0 3h2v4H7V8z"/>
                     </svg>
-                    🔄 Sync Issues
+                    <RefreshCw className="w-4 h-4 mr-2" /> Sync Issues
                   </>
                 )}
               </button>

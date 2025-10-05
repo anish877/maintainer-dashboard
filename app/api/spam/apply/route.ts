@@ -77,7 +77,7 @@ export async function POST(request: NextRequest) {
             state_reason: 'not_planned'
           })
           
-          const blockComment = `🚫 **Blocked by Spam Detection**
+          const blockComment = `**Blocked by Spam Detection**
 
 This ${comment ? 'issue' : 'pull request'} has been automatically blocked due to detected spam or low-quality content.
 

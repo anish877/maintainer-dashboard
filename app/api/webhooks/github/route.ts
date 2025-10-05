@@ -69,7 +69,7 @@ async function handleIssuesEvent(data: any) {
       }
     } else if (action === 'unassigned' && issue.assignees && issue.assignees.length === 0) {
       // Handle unassignment
-      console.log(`🚫 Issue #${issue.number} was unassigned`)
+      console.log(`Issue #${issue.number} was unassigned`)
     }
   } catch (error) {
     console.error('❌ Error handling issues event:', error)

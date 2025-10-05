@@ -15,7 +15,7 @@ async function testGitHubOAuthIntegration() {
   
   if (testToken === 'ghp_test_token_here') {
     console.log('📝 No GitHub token found for testing');
-    console.log('💡 To test with a real token:');
+    console.log('To test with a real token:');
     console.log('   1. Sign in to your GitHub account');
     console.log('   2. Go to: https://github.com/settings/tokens');
     console.log('   3. Create a new token with "repo" and "issues" scopes');
@@ -109,7 +109,7 @@ async function testGitHubOAuthIntegration() {
       console.log('🔑 Authentication failed - Invalid token');
       console.log('💡 Please check your GitHub token is correct');
     } else if (error.status === 403) {
-      console.log('🚫 Permission denied - Token lacks required permissions');
+      console.log('Permission denied - Token lacks required permissions');
       console.log('💡 Please ensure your token has "repo" and "issues" scopes');
     } else if (error.status === 404) {
       console.log('📂 Repository not found or no access');

@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import { useToastNotifications } from '@/lib/toast'
-import { Users, AlertTriangle, Bot, Rocket } from 'lucide-react'
+import { Users, AlertTriangle, Bot, Rocket, X } from 'lucide-react'
 
 export default function RepoTriagePage() {
   const params = useParams()
@@ -150,7 +150,7 @@ export default function RepoTriagePage() {
         }
       }
       
-      showError(`❌ Failed to apply labels: ${errorMessage}`)
+      showError(`Failed to apply labels: ${errorMessage}`)
     } finally {
       setApplyingLabels(prev => {
         const newSet = new Set(prev)

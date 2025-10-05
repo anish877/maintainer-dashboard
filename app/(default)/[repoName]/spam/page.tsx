@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import { useToastNotifications } from '@/lib/toast'
+import { Users, AlertTriangle, Shield, Rocket, Search, X, Bot } from 'lucide-react'
 
 interface SpamAnalysis {
   issueNumber: number;
@@ -93,7 +94,7 @@ export default function SpamDetectionPage() {
       }
 
       setAnalysisResults(data.results)
-      success(`🛡️ Analysis complete! Found ${data.results.length} items that may need review.`)
+      success(`Analysis complete! Found ${data.results.length} items that may need review.`)
     } catch (err) {
       setAnalysisError(err instanceof Error ? err.message : 'An error occurred during analysis')
     } finally {
@@ -136,11 +137,11 @@ export default function SpamDetectionPage() {
         approve: 'approved'
       }
       
-      success(`✅ Issue #${issueNumber} has been ${actionMessages[action]} and comment posted on GitHub`)
+      success(`Issue #${issueNumber} has been ${actionMessages[action]} and comment posted on GitHub`)
       
     } catch (err) {
       console.error('Error applying action:', err)
-      showError(`❌ Failed to apply action: ${err instanceof Error ? err.message : 'Unknown error'}`)
+      showError(`Failed to apply action: ${err instanceof Error ? err.message : 'Unknown error'}`)
     } finally {
       setProcessingIssues(prev => {
         const newSet = new Set(prev)
@@ -172,7 +173,7 @@ export default function SpamDetectionPage() {
         <div className="flex items-center justify-center min-h-[400px]">
         <div className="text-center">
           <div className="text-red-500 mb-4 text-4xl">
-            {isCollaboratorError ? '👥' : '⚠️'}
+            {isCollaboratorError ? <Users className="w-12 h-12 mx-auto" /> : <AlertTriangle className="w-12 h-12 mx-auto" />}
           </div>
             <h2 className="text-xl font-semibold text-gray-800 dark:text-gray-100 mb-2">
               {isCollaboratorError ? 'Not Repository Owner' : 'Repository Not Found'}
@@ -228,7 +229,7 @@ export default function SpamDetectionPage() {
             </button>
           </div>
           <h1 className="text-2xl md:text-3xl text-gray-800 dark:text-gray-100 font-bold">
-            🛡️ Spam & Low-Quality Detection
+            <Shield className="w-5 h-5 mr-2 inline" /> Spam & Low-Quality Detection
           </h1>
           <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
             AI-powered analysis to detect spam, low-quality content, and AI-generated "slop" in <strong>{repo.name}</strong>
@@ -272,7 +273,7 @@ export default function SpamDetectionPage() {
                 <svg className="fill-current shrink-0 mr-2" width="16" height="16" viewBox="0 0 16 16">
                   <path d="M8 0C3.58 0 0 3.58 0 8s3.58 8 8 8 8-3.58 8-8-3.58-8-8-8zm0 14c-3.31 0-6-2.69-6-6s2.69-6 6-6 6 2.69 6 6-2.69 6-6 6zm-1-9h2v2H7V5zm0 3h2v4H7V8z"/>
                 </svg>
-                🚀 Analyze for Spam
+                <Rocket className="w-4 h-4 mr-2" /> Analyze for Spam
               </>
             )}
           </button>
@@ -321,17 +322,17 @@ export default function SpamDetectionPage() {
                     <div className="flex items-center space-x-2">
                       {result.analysis.isSpam && (
                         <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400">
-                          🚫 Spam
+                          <X className="w-4 h-4 mr-1" /> Spam
                         </span>
                       )}
                       {result.analysis.isLowQuality && (
                         <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-orange-100 text-orange-800 dark:bg-orange-900/20 dark:text-orange-400">
-                          ⚠️ Low Quality
+                          <AlertTriangle className="w-4 h-4 mr-1" /> Low Quality
                         </span>
                       )}
                       {result.analysis.isSlop && (
                         <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-purple-100 text-purple-800 dark:bg-purple-900/20 dark:text-purple-400">
-                          🤖 AI Slop
+                          <Bot className="w-4 h-4 mr-1" /> AI Slop
                         </span>
                       )}
                       <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${
@@ -396,7 +397,7 @@ export default function SpamDetectionPage() {
                         </>
                       ) : (
                         <>
-                          🚫 Block & Close
+                          <X className="w-4 h-4 mr-1" /> Block & Close
                         </>
                       )}
                     </button>
@@ -415,7 +416,7 @@ export default function SpamDetectionPage() {
                         </>
                       ) : (
                         <>
-                          ⚠️ Flag for Review
+                          <AlertTriangle className="w-4 h-4 mr-1" /> Flag for Review
                         </>
                       )}
                     </button>
@@ -433,7 +434,7 @@ export default function SpamDetectionPage() {
                       </>
                     ) : (
                       <>
-                        🔍 Manual Review
+                        <Search className="w-4 h-4 mr-1" /> Manual Review
                       </>
                     )}
                   </button>
@@ -464,7 +465,7 @@ export default function SpamDetectionPage() {
       {/* Empty State */}
       {!isAnalyzing && analysisResults.length === 0 && !analysisError && (
         <div className="bg-white dark:bg-gray-800 shadow-sm rounded-xl p-12 text-center">
-          <div className="text-gray-400 dark:text-gray-500 mb-4 text-6xl">🛡️</div>
+          <div className="text-gray-400 dark:text-gray-500 mb-4 text-6xl"><Shield className="w-24 h-24 mx-auto" /></div>
           <h3 className="text-lg font-medium text-gray-800 dark:text-gray-100 mb-2">
             Ready to Detect Spam & Low-Quality Content
           </h3>
