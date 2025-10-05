@@ -145,6 +145,8 @@ model Repository {
   pendingComments           PendingComment[] @relation("PendingComments")
   completenessAnalyses      CompletenessAnalysis[] @relation("CompletenessAnalyses")
   completenessMetrics       CompletenessMetrics[] @relation("CompletenessMetrics")
+  contributorHealth         ContributorHealth[] @relation("ContributorHealth")
+  contributorInsights       ContributorInsight[]
 
   @@index([githubId])
   @@index([fullName])
@@ -1043,4 +1045,162 @@ enum TemplateCategory {
   PERFORMANCE_ISSUE
   SECURITY_ISSUE
   CUSTOM
+}
+
+// ================================
+// CONTRIBUTOR HEALTH ANALYTICS
+// ================================
+
+model ContributorHealth {
+  id              String   @id @default(cuid())
+  username        String
+  repositoryId    String
+  
+  // Basic metrics
+  totalContributions Int   @default(0)
+  issuesCreated   Int      @default(0)
+  prsCreated      Int      @default(0)
+  commitsCount    Int      @default(0)
+  commentsCount   Int      @default(0)
+  
+  // Health indicators
+  isFirstTime     Boolean  @default(true)
+  isAtRisk        Boolean  @default(false)
+  isRisingStar    Boolean  @default(false)
+  
+  // Time-based metrics
+  firstContributionAt DateTime?
+  lastContributionAt  DateTime?
+  avgTimeBetweenContributions Float? // days
+  
+  // Retention metrics
+  retentionScore  Float    @default(0) // 0-100
+  engagementScore Float    @default(0) // 0-100
+  burnoutRisk     Float    @default(0) // 0-100
+  
+  // Geographic & timezone
+  location        String?
+  timezone        String?
+  country         String?
+  
+  // Contribution patterns
+  contributionPattern Json? // {"morning": 10, "afternoon": 30, "evening": 15}
+  dayOfWeekPattern    Json? // {"monday": 20, "tuesday": 25, ...}
+  
+  // Quality metrics
+  avgResponseTime     Float? // hours
+  codeReviewScore     Float? // 0-100
+  collaborationScore  Float? // 0-100
+  
+  // Diversity metrics
+  isFirstTimeContributor Boolean @default(true)
+  contributionStreak     Int     @default(0) // consecutive weeks
+  longestStreak          Int     @default(0)
+  
+  // Risk factors
+  decliningActivity      Boolean @default(false)
+  longAbsence            Boolean @default(false) // > 30 days
+  negativeFeedback       Boolean @default(false)
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  // Relations
+  repository      Repository @relation("ContributorHealth", fields: [repositoryId], references: [id], onDelete: Cascade)
+  healthMetrics   ContributorHealthMetrics[]
+  insights        ContributorInsight[]
+  
+  @@unique([username, repositoryId])
+  @@index([repositoryId])
+  @@index([isAtRisk])
+  @@index([isRisingStar])
+  @@index([retentionScore])
+}
+
+model ContributorHealthMetrics {
+  id              String   @id @default(cuid())
+  date            DateTime @default(now()) @db.Date
+  
+  // Daily metrics
+  contributionsToday Int   @default(0)
+  issuesToday        Int   @default(0)
+  prsToday          Int     @default(0)
+  commitsToday      Int     @default(0)
+  commentsToday     Int     @default(0)
+  
+  // Weekly aggregates
+  contributionsThisWeek Int @default(0)
+  avgDailyContributions Float @default(0)
+  
+  // Monthly aggregates
+  contributionsThisMonth Int @default(0)
+  monthlyGrowthRate      Float @default(0) // percentage
+  
+  // Health scores
+  dailyHealthScore Float   @default(0) // 0-100
+  engagementLevel  String  @default("NORMAL") // LOW, NORMAL, HIGH, BURNOUT
+  
+  // Activity patterns
+  activeHours      Json?   // {"9": 2, "10": 5, "11": 3, ...}
+  mostActiveDay    String?
+  
+  createdAt       DateTime @default(now())
+  
+  // Relations
+  contributorId   String
+  contributor     ContributorHealth @relation(fields: [contributorId], references: [id], onDelete: Cascade)
+  
+  @@unique([contributorId, date])
+  @@index([contributorId, date])
+  @@index([date])
+}
+
+model ContributorInsight {
+  id              String   @id @default(cuid())
+  type            InsightType
+  title           String
+  description     String   @db.Text
+  severity        InsightSeverity @default(INFO)
+  
+  // Insight data
+  metadata        Json?    // Flexible data storage
+  confidence      Float    @default(0) // 0-100
+  
+  // Status
+  isActive        Boolean  @default(true)
+  isResolved      Boolean  @default(false)
+  resolvedAt      DateTime?
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  // Relations
+  contributorId   String
+  contributor     ContributorHealth @relation(fields: [contributorId], references: [id], onDelete: Cascade)
+  repositoryId    String
+  repository      Repository @relation(fields: [repositoryId], references: [id], onDelete: Cascade)
+  
+  @@index([contributorId, type])
+  @@index([repositoryId, type])
+  @@index([isActive])
+}
+
+enum InsightType {
+  RISING_STAR
+  AT_RISK
+  BURNOUT_WARNING
+  HIGH_PERFORMER
+  FIRST_TIME_CONTRIBUTOR
+  DIVERSITY_INSIGHT
+  ACTIVITY_SPIKE
+  ACTIVITY_DECLINE
+  QUALITY_IMPROVEMENT
+  COLLABORATION_STRONG
+}
+
+enum InsightSeverity {
+  INFO
+  WARNING
+  CRITICAL
+  SUCCESS
 }

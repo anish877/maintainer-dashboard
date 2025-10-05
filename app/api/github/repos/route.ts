@@ -127,8 +127,32 @@ export async function GET(request: NextRequest) {
       }
     }
 
+    // Return the saved repositories with database IDs instead of GitHub data
+    const reposWithDbIds = savedRepos.map(savedRepo => ({
+      id: savedRepo.id, // Database ID
+      githubId: savedRepo.githubId, // GitHub ID for reference
+      name: savedRepo.name,
+      fullName: savedRepo.fullName,
+      description: savedRepo.description,
+      owner: savedRepo.owner,
+      stars: savedRepo.stars,
+      language: savedRepo.language,
+      visibility: savedRepo.isPrivate ? 'Private' : 'Public',
+      createdAt: savedRepo.createdAt,
+      updatedAt: savedRepo.updatedAt,
+      cloneUrl: `https://github.com/${savedRepo.fullName}.git`,
+      htmlUrl: `https://github.com/${savedRepo.fullName}`,
+      defaultBranch: savedRepo.defaultBranch,
+      forks: savedRepo.forks,
+      openIssues: 0, // We don't track this in the database yet
+      size: 0, // We don't track this in the database yet
+      archived: false, // We don't track this in the database yet
+      disabled: false, // We don't track this in the database yet
+      fork: false // We don't track this in the database yet
+    }))
+
     return NextResponse.json({ 
-      repos,
+      repos: reposWithDbIds,
       savedCount: savedRepos.length,
       totalCount: repos.length,
       message: `Successfully synced ${savedRepos.length} repositories to database (showing most recent ${repos.length} repositories for faster loading)`,

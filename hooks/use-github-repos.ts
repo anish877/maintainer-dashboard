@@ -3,7 +3,8 @@
 import { useState, useEffect } from 'react'
 
 interface GitHubRepo {
-  id: number
+  id: string // Database ID
+  githubId?: number // GitHub ID for reference
   name: string
   fullName: string
   description: string
