@@ -39,6 +39,7 @@ export default function RepoAssignments({ repoName }: RepoAssignmentsProps) {
   const [assignments, setAssignments] = useState<RepoAssignment[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [updatingStatus, setUpdatingStatus] = useState<Set<string>>(new Set())
   const [stats, setStats] = useState({
     active: 0,
     warning: 0,
@@ -249,7 +250,15 @@ export default function RepoAssignments({ repoName }: RepoAssignmentsProps) {
                         </div>
                         <div className="flex items-center space-x-2 mt-1">
                           <span className={getStatusBadge(assignment.status, assignment.urgency)}>
-                            {getUrgencyIcon(assignment.urgency)} {assignment.status}
+                            {updatingStatus.has(assignment.id) ? (
+                              <span className="flex items-center">
+                                <span className="animate-spin mr-1">⟳</span> Updating...
+                              </span>
+                            ) : (
+                              <>
+                                {getUrgencyIcon(assignment.urgency)} {assignment.status}
+                              </>
+                            )}
                           </span>
                           <span className="text-xs text-gray-500 dark:text-gray-400">
                             {assignment.daysInactive} days inactive
@@ -276,8 +285,31 @@ export default function RepoAssignments({ repoName }: RepoAssignmentsProps) {
                       <ActivityChecker 
                         repositoryName={assignment.repositoryName}
                         assignmentId={assignment.id}
+                        onActivityCheckStart={() => {
+                          setUpdatingStatus(prev => new Set(prev).add(assignment.id))
+                        }}
                         onActivityChecked={(report) => {
-                          console.log('Activity checked:', report)
+                          console.log('🔄 Activity checked for assignment:', assignment.id, 'New status:', report.status)
+                          // Update the assignment status in real-time
+                          setAssignments(prevAssignments => 
+                            prevAssignments.map(prevAssignment => 
+                              prevAssignment.id === assignment.id 
+                                ? { 
+                                    ...prevAssignment, 
+                                    status: report.status, 
+                                    urgency: report.urgency,
+                                    message: report.message
+                                  }
+                                : prevAssignment
+                            )
+                          )
+                          // Remove from updating set
+                          setUpdatingStatus(prev => {
+                            const newSet = new Set(prev)
+                            newSet.delete(assignment.id)
+                            return newSet
+                          })
+                          console.log('✅ Assignment updated with new status:', report.status)
                         }}
                       />
                     </div>

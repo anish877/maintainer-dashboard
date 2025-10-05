@@ -21,6 +21,13 @@ interface Assignment {
   }
   activities: any[]
   notifications: any[]
+  forkActivity?: {
+    hasFork: boolean
+    forkName: string
+    forkUrl: string
+    lastForkCommit: any
+    totalForkCommits: number
+  }
 }
 
 interface AssignmentRowProps {
@@ -30,6 +37,7 @@ interface AssignmentRowProps {
   onAssignmentAction: (action: string, assignmentId: string, data?: any) => void
   getStatusColor: (status: string) => string
   getWorkTypeColor: (workType: string) => string
+  onStatusUpdate?: (assignmentId: string, newStatus: string) => void
 }
 
 export default function AssignmentRow({ 
@@ -38,9 +46,11 @@ export default function AssignmentRow({
   isSelected, 
   onAssignmentAction,
   getStatusColor,
-  getWorkTypeColor
+  getWorkTypeColor,
+  onStatusUpdate
 }: AssignmentRowProps) {
   const [detailsOpen, setDetailsOpen] = useState(false)
+  const [currentStatus, setCurrentStatus] = useState(assignment.status)
 
   const handleCheckboxChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     onCheckboxChange(assignment.id, e.target.checked)
@@ -48,6 +58,42 @@ export default function AssignmentRow({
 
   const handleAutomatedAction = (action: string) => {
     onAssignmentAction(action, assignment.id)
+  }
+
+  const updateStatus = (newStatus: string) => {
+    setCurrentStatus(newStatus)
+    onStatusUpdate?.(assignment.id, newStatus)
+  }
+
+  const handleCheckStatus = async () => {
+    try {
+      const response = await fetch('/api/assignments/check-activity', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify({
+          repositoryName: assignment.repositoryName,
+          assignmentId: assignment.id
+        })
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Failed to check activity')
+      }
+
+      const data = await response.json()
+      const newStatus = data.report.status
+      
+      // Update the status instantly
+      updateStatus(newStatus)
+      
+      console.log(`✅ Status updated to: ${newStatus}`)
+    } catch (error) {
+      console.error('Error checking status:', error)
+    }
   }
 
   const formatDate = (dateString: string) => {
@@ -126,8 +172,8 @@ export default function AssignmentRow({
           </div>
         </td>
         <td className="px-2 first:pl-5 last:pr-5 py-3 whitespace-nowrap">
-          <div className={`inline-flex font-medium rounded-full text-center px-2.5 py-0.5 ${getStatusColor(assignment.status)}`}>
-            {assignment.status.replace('_', ' ')}
+          <div className={`inline-flex font-medium rounded-full text-center px-2.5 py-0.5 ${getStatusColor(currentStatus)}`}>
+            {currentStatus.replace('_', ' ')}
           </div>
         </td>
         <td className="px-2 first:pl-5 last:pr-5 py-3 whitespace-nowrap">
@@ -140,6 +186,12 @@ export default function AssignmentRow({
         </td>
         <td className="px-2 first:pl-5 last:pr-5 py-3 whitespace-nowrap">
           <div className="flex items-center space-x-2">
+            <button
+              onClick={() => handleCheckStatus()}
+              className="text-purple-600 hover:text-purple-700 text-sm font-medium"
+            >
+              🔍 Check Status
+            </button>
             <button
               onClick={() => onAssignmentAction('mark_active', assignment.id)}
               className="text-green-600 hover:text-green-700 text-sm"
@@ -210,6 +262,33 @@ export default function AssignmentRow({
                   <div className="text-sm text-gray-500">No AI analysis available</div>
                 )}
               </div>
+
+              {/* Fork Activity Details */}
+              {assignment.forkActivity && assignment.forkActivity.hasFork && (
+                <div className="md:col-span-2">
+                  <h4 className="font-medium text-gray-800 dark:text-gray-200 mb-2">🍴 Fork Activity</h4>
+                  <div className="space-y-1 text-sm">
+                    <div>
+                      <span className="font-medium">Fork:</span>{' '}
+                      <a 
+                        href={assignment.forkActivity.forkUrl} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="text-blue-600 hover:underline"
+                      >
+                        {assignment.forkActivity.forkName}
+                      </a>
+                    </div>
+                    <div><span className="font-medium">Commits in Fork:</span> {assignment.forkActivity.totalForkCommits}</div>
+                    {assignment.forkActivity.lastForkCommit && (
+                      <div>
+                        <span className="font-medium">Last Fork Commit:</span>{' '}
+                        {new Date(assignment.forkActivity.lastForkCommit.date).toLocaleString()}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </td>
