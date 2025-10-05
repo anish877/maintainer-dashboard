@@ -963,19 +963,34 @@ model PendingComment {
 model CompletenessAnalysis {
   id              String   @id @default(cuid())
   
-  // Analysis results
+  // Issue information
   issueNumber     Int
+  issueTitle      String
+  issueUrl        String
+  issueAuthor     String
+  
+  // Analysis results (legacy fields for backward compatibility)
   overallScore    Float    // 0-100
-  reproductionSteps Json
-  expectedBehavior Json
-  versionInfo     Json
-  environmentDetails Json
-  errorLogs       Json
-  screenshots     Json
+  reproductionSteps Json?
+  expectedBehavior Json?
+  versionInfo     Json?
+  environmentDetails Json?
+  errorLogs       Json?
+  screenshots     Json?
+  
+  // Simplified analysis results
+  confidence      Float    @default(0)
+  missingElements Json     // Array of missing elements
+  suggestions     Json     // Array of suggestions
+  needsImage      Boolean  @default(false)
+  isComplete      Boolean  @default(false)
+  reasoning       String?  @db.Text
+  
+  // Generated comment
+  generatedComment String? @db.Text
   
   // Analysis metadata
   analysisVersion String   @default("v1")
-  confidence      Float    @default(0)
   processingTime  Int?     // milliseconds
   
   createdAt       DateTime @default(now())

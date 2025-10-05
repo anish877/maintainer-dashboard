@@ -618,6 +618,21 @@ export default function Sidebar({
                   </div>
                 </SidebarLink>
               </li>
+              {/* Simple Repository Analyzer */}
+              <li className={`pl-4 pr-3 py-2 rounded-lg mb-0.5 last:mb-0 bg-linear-to-r ${segments.includes('simple-scraper') && 'from-emerald-500/[0.12] dark:from-emerald-500/[0.24] to-emerald-500/[0.04]'}`}>
+                <SidebarLink href="/simple-scraper">
+                  <div className="flex items-center">
+                    <svg className={`shrink-0 fill-current ${segments.includes('simple-scraper') ? 'text-emerald-500' : 'text-gray-400 dark:text-gray-500'}`} xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16">
+                      <path d="M8 0a8 8 0 1 0 0 16A8 8 0 0 0 8 0ZM1.5 8a6.5 6.5 0 1 1 13 0 6.5 6.5 0 0 1-13 0Z"/>
+                      <path d="M8 3.5a.5.5 0 0 0-1 0v3a.5.5 0 0 0 .5.5h3a.5.5 0 0 0 0-1H8V3.5Z"/>
+                      <path d="M12 8a4 4 0 1 1-8 0 4 4 0 0 1 8 0Z"/>
+                    </svg>
+                    <span className="text-sm font-medium ml-4 lg:opacity-0 lg:sidebar-expanded:opacity-100 2xl:opacity-100 duration-200">
+                      Simple Analyzer
+                    </span>
+                  </div>
+                </SidebarLink>
+              </li>
               {/* AI Triage */}
               <li className={`pl-4 pr-3 py-2 rounded-lg mb-0.5 last:mb-0 bg-linear-to-r ${segments.includes('triage') && 'from-violet-500/[0.12] dark:from-violet-500/[0.24] to-violet-500/[0.04]'}`}>
                 <SidebarLink href="/triage">
@@ -632,18 +647,49 @@ export default function Sidebar({
                 </SidebarLink>
               </li>
               {/* Issue Completeness Checker */}
-              <li className={`pl-4 pr-3 py-2 rounded-lg mb-0.5 last:mb-0 bg-linear-to-r ${segments.includes('completeness') && 'from-violet-500/[0.12] dark:from-violet-500/[0.24] to-violet-500/[0.04]'}`}>
-                <SidebarLink href="/completeness">
-                  <div className="flex items-center">
-                    <svg className={`shrink-0 fill-current ${segments.includes('completeness') ? 'text-violet-500' : 'text-gray-400 dark:text-gray-500'}`} xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16">
-                      <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                    </svg>
-                    <span className="text-sm font-medium ml-4 lg:opacity-0 lg:sidebar-expanded:opacity-100 2xl:opacity-100 duration-200">
-                      Completeness Checker
-                    </span>
-                  </div>
-                </SidebarLink>
-              </li>
+              <SidebarLinkGroup open={segments.includes('completeness')}>
+                {(handleClick, open) => {
+                  return (
+                    <>
+                      <a
+                        href="#0"
+                        className={`block text-gray-800 dark:text-gray-100 truncate transition ${segments.includes('completeness') ? '' : 'hover:text-gray-900 dark:hover:text-white'
+                          }`}
+                        onClick={(e) => {
+                          e.preventDefault();
+                          expandOnly ? setSidebarExpanded(true) : handleClick()
+                        }}
+                      >
+                        <div className="flex items-center">
+                          <svg className={`shrink-0 fill-current ${segments.includes('completeness') ? 'text-violet-500' : 'text-gray-400 dark:text-gray-500'}`} xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16">
+                            <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                          </svg>
+                          <span className="text-sm font-medium ml-4 lg:opacity-0 lg:sidebar-expanded:opacity-100 2xl:opacity-100 duration-200">
+                            Completeness Checker
+                          </span>
+                          <svg className={`ml-auto shrink-0 fill-current text-gray-400 dark:text-gray-500 ${open && 'rotate-180'}`} width="12" height="12" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M5.305 4.695a.5.5 0 0 0 0 .707l3.99 3.99a.5.5 0 0 0 .707-.707L5.305 4.695z" />
+                          </svg>
+                        </div>
+                      </a>
+                      <div className="lg:block lg:sidebar-expanded:block 2xl:block">
+                        <ul className={`pl-9 mt-1 ${!open && 'hidden'}`}>
+                          <li>
+                            <SidebarLink href="/completeness/simple">
+                              <span className="text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition duration-150">Simple</span>
+                            </SidebarLink>
+                          </li>
+                          <li>
+                            <SidebarLink href="/completeness">
+                              <span className="text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition duration-150">Advanced</span>
+                            </SidebarLink>
+                          </li>
+                        </ul>
+                      </div>
+                    </>
+                  )
+                }}
+              </SidebarLinkGroup>
               {/* Contributor Health Analytics */}
               <li className={`pl-4 pr-3 py-2 rounded-lg mb-0.5 last:mb-0 bg-linear-to-r ${segments.includes('contributor-analytics') && 'from-emerald-500/[0.12] dark:from-emerald-500/[0.24] to-emerald-500/[0.04]'}`}>
                 <SidebarLink href="/contributor-analytics">

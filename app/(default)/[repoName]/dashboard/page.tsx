@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import RepoAssignments from './repo-assignments'
 import RepoMaintainerControls from './repo-maintainer-controls'
+import RepoStaleIssues from './repo-stale-issues'
 
 export default function RepoDashboard() {
   const params = useParams()
@@ -354,6 +355,11 @@ export default function RepoDashboard() {
       {/* Assignments Section */}
       <div className="mt-8">
         <RepoAssignments repoName={repoName} />
+      </div>
+
+      {/* Stale Issues Section */}
+      <div className="mt-8">
+        <RepoStaleIssues repoName={repoName} owner={repo.owner?.login || ''} />
       </div>
 
     </div>

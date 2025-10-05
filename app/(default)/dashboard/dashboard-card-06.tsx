@@ -1,7 +1,7 @@
 'use client'
 
 import DoughnutChart from '@/components/charts/doughnut-chart'
-import { useGitHubAnalytics } from '@/hooks/use-github-analytics'
+import { useAnalytics } from '@/hooks/use-analytics-context'
 
 // Import utilities
 import { getCssVariable } from '@/components/utils/utils'
@@ -20,7 +20,7 @@ const colors = [
 ]
 
 export default function DashboardCard06() {
-  const { stats, loading, error } = useGitHubAnalytics()
+  const { stats, loading, error } = useAnalytics()
 
   // Transform language data for the chart
   const languageEntries = stats ? Object.entries(stats.languages).slice(0, 10) : []
