@@ -32,7 +32,16 @@ interface ActivityReport {
     message: string
     date: string
     url: string
+    source: 'main' | 'fork'
+    forkName?: string
   }>
+  forkActivity: {
+    hasFork: boolean
+    forkName: string
+    forkUrl: string
+    lastForkCommit: any
+    totalForkCommits: number
+  }
   issueUrl: string
   lastComment: {
     body: string
@@ -44,12 +53,14 @@ interface ActivityReport {
 interface ActivityCheckerProps {
   repositoryName: string
   assignmentId: string
+  onActivityCheckStart?: () => void
   onActivityChecked?: (report: ActivityReport) => void
 }
 
 export default function ActivityChecker({ 
   repositoryName, 
   assignmentId, 
+  onActivityCheckStart,
   onActivityChecked 
 }: ActivityCheckerProps) {
   const [isChecking, setIsChecking] = useState(false)
@@ -59,6 +70,7 @@ export default function ActivityChecker({
   const checkActivity = async () => {
     setIsChecking(true)
     setError(null)
+    onActivityCheckStart?.()
 
     try {
       const response = await fetch('/api/assignments/check-activity', {
@@ -164,6 +176,20 @@ export default function ActivityChecker({
             </div>
           </div>
 
+          {/* Fork Activity Section */}
+          {report.forkActivity.hasFork && (
+            <div className="p-3 bg-blue-50 rounded border border-blue-200">
+              <h3 className="font-semibold text-blue-900 mb-2">🍴 Fork Activity</h3>
+              <div className="space-y-1 text-sm">
+                <p><strong>Fork:</strong> <a href={report.forkActivity.forkUrl} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">{report.forkActivity.forkName}</a></p>
+                <p><strong>Commits in Fork:</strong> {report.forkActivity.totalForkCommits}</p>
+                {report.forkActivity.lastForkCommit && (
+                  <p><strong>Last Fork Commit:</strong> {new Date(report.forkActivity.lastForkCommit.date).toLocaleString()}</p>
+                )}
+              </div>
+            </div>
+          )}
+
           <div className="p-3 bg-white rounded border">
             <h3 className="font-semibold text-gray-900 mb-2">💡 Recommendation</h3>
             <p className="text-gray-700">{report.recommendation}</p>
@@ -176,9 +202,21 @@ export default function ActivityChecker({
               <div className="space-y-2">
                 {report.recentCommits.map((commit, index) => (
                   <div key={index} className="p-2 bg-white rounded border text-sm">
-                    <p className="font-mono text-xs text-gray-500">{commit.sha.substring(0, 7)}</p>
+                    <div className="flex items-center justify-between">
+                      <p className="font-mono text-xs text-gray-500">{commit.sha.substring(0, 7)}</p>
+                      <span className={`px-2 py-1 rounded text-xs font-medium ${
+                        commit.source === 'fork' 
+                          ? 'bg-blue-100 text-blue-800' 
+                          : 'bg-gray-100 text-gray-800'
+                      }`}>
+                        {commit.source === 'fork' ? '🍴 Fork' : '🏠 Main'}
+                      </span>
+                    </div>
                     <p className="text-gray-900">{commit.message}</p>
                     <p className="text-gray-500">{new Date(commit.date).toLocaleString()}</p>
+                    {commit.source === 'fork' && commit.forkName && (
+                      <p className="text-xs text-blue-600">From: {commit.forkName}</p>
+                    )}
                   </div>
                 ))}
               </div>

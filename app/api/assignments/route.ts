@@ -2,11 +2,75 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { Octokit } from '@octokit/rest'
+import { prisma } from '@/lib/prisma'
 
-// Automated status calculation function
-function calculateAutomatedStatus(assignment: any) {
+// Enhanced automated status calculation function with fork activity support
+async function calculateAutomatedStatus(assignment: any, octokit: Octokit) {
   const now = new Date()
-  const lastActivity = new Date(assignment.lastActivityAt)
+  let lastActivity = new Date(assignment.lastActivityAt)
+  let forkActivity = {
+    hasFork: false,
+    forkName: '',
+    forkUrl: '',
+    lastForkCommit: null as any,
+    totalForkCommits: 0
+  }
+
+  try {
+    // Parse repository name
+    const [owner, repo] = assignment.repositoryName.split('/')
+    
+    // Check for fork activity
+    console.log(`🔍 Checking fork activity for ${assignment.assigneeLogin} in ${assignment.repositoryName}`)
+    
+    // Get all forks of the repository
+    const { data: forks } = await octokit.rest.repos.listForks({
+      owner,
+      repo,
+      per_page: 100
+    })
+
+    // Find fork owned by the assignee
+    const assigneeFork = forks.find(fork => fork.owner.login === assignment.assigneeLogin)
+    
+    if (assigneeFork) {
+      console.log(`✅ Found fork: ${assigneeFork.full_name}`)
+      forkActivity.hasFork = true
+      forkActivity.forkName = assigneeFork.full_name
+      forkActivity.forkUrl = assigneeFork.html_url
+
+      // Get commits from the fork since last activity
+      const { data: forkCommits } = await octokit.rest.repos.listCommits({
+        owner: assigneeFork.owner.login,
+        repo: assigneeFork.name,
+        author: assignment.assigneeLogin,
+        since: lastActivity.toISOString(),
+        per_page: 10
+      })
+
+      forkActivity.totalForkCommits = forkCommits.length
+      forkActivity.lastForkCommit = forkCommits[0] || null
+
+      // Update last activity if fork has more recent commits
+      if (forkCommits.length > 0) {
+        const latestForkCommit = forkCommits[0]
+        const forkCommitTime = new Date(latestForkCommit.commit.author?.date || latestForkCommit.commit.committer?.date || latestForkCommit.commit.date)
+        
+        if (forkCommitTime > lastActivity) {
+          console.log(`🔄 Updating last activity from fork: ${forkCommitTime.toISOString()}`)
+          lastActivity = forkCommitTime
+        }
+      }
+
+      console.log(`📊 Found ${forkCommits.length} commits in fork since ${assignment.lastActivityAt}`)
+    } else {
+      console.log(`❌ No fork found for ${assignment.assigneeLogin}`)
+    }
+  } catch (error) {
+    console.log('Could not check fork activity:', error instanceof Error ? error.message : 'Unknown error')
+  }
+
+  // Calculate days since last activity (including fork activity)
   const daysSinceActivity = Math.floor((now.getTime() - lastActivity.getTime()) / (1000 * 60 * 60 * 24))
   
   // Automated thresholds
@@ -17,7 +81,8 @@ function calculateAutomatedStatus(assignment: any) {
       action: 'Remove from issue',
       actionUrl: `https://github.com/${assignment.repositoryName}/issues/${assignment.issueNumber}`,
       urgency: 'critical',
-      message: `🚨 Auto-unassigned after ${daysSinceActivity} days of inactivity`
+      message: `🚨 Auto-unassigned after ${daysSinceActivity} days of inactivity`,
+      forkActivity
     }
   } else if (daysSinceActivity >= 8) {
     return {
@@ -26,7 +91,8 @@ function calculateAutomatedStatus(assignment: any) {
       action: 'Consider removing',
       actionUrl: `https://github.com/${assignment.repositoryName}/issues/${assignment.issueNumber}`,
       urgency: 'high',
-      message: `⚠️ Alert: ${daysSinceActivity} days inactive`
+      message: `⚠️ Alert: ${daysSinceActivity} days inactive`,
+      forkActivity
     }
   } else if (daysSinceActivity >= 4) {
     return {
@@ -35,16 +101,22 @@ function calculateAutomatedStatus(assignment: any) {
       action: 'Monitor closely',
       actionUrl: `https://github.com/${assignment.repositoryName}/issues/${assignment.issueNumber}`,
       urgency: 'medium',
-      message: `🔔 Warning: ${daysSinceActivity} days inactive`
+      message: `🔔 Warning: ${daysSinceActivity} days inactive`,
+      forkActivity
     }
   } else {
+    let message = `✅ Active: Recent activity`
+    if (forkActivity.hasFork && forkActivity.totalForkCommits > 0) {
+      message += ` (${forkActivity.totalForkCommits} commits in fork)`
+    }
     return {
       status: 'ACTIVE',
       daysInactive: daysSinceActivity,
       action: 'Active work',
       actionUrl: `https://github.com/${assignment.repositoryName}/issues/${assignment.issueNumber}`,
       urgency: 'low',
-      message: `✅ Active: Recent activity`
+      message,
+      forkActivity
     }
   }
 }
@@ -177,9 +249,22 @@ export async function GET(request: NextRequest) {
           }
     ]
     
-    // Apply automated status calculation to all assignments
-    let assignments = baseAssignments.map(assignment => {
-      const automatedStatus = calculateAutomatedStatus(assignment)
+    // Get user's GitHub access token for fork activity checking
+    const user = await prisma.user.findUnique({
+      where: { id: session.user.id },
+      select: { accessToken: true }
+    })
+
+    if (!user?.accessToken) {
+      return NextResponse.json({ error: 'GitHub access token required' }, { status: 401 })
+    }
+
+    // Initialize Octokit for fork activity checking
+    const octokit = new Octokit({ auth: user.accessToken })
+
+    // Apply automated status calculation to all assignments (now with fork activity)
+    let assignments = await Promise.all(baseAssignments.map(async assignment => {
+      const automatedStatus = await calculateAutomatedStatus(assignment, octokit)
       return {
         ...assignment,
         ...automatedStatus,
@@ -192,7 +277,7 @@ export async function GET(request: NextRequest) {
           viewProfile: `https://github.com/${assignment.assigneeLogin}`
         }
       }
-    })
+    }))
     
     // Apply filters to assignments
     if (status) {
