@@ -104,11 +104,19 @@ export class StackOverflowScraper {
             const content = contentElement?.textContent?.trim() || '';
             const fullContent = `${title} ${content}`.toLowerCase();
 
+            // STRICT: Only include posts that explicitly mention the repository
             const matchesKeywords = keywords.some((keyword: string) =>
-              fullContent.includes(keyword.toLowerCase())
+              fullContent.includes(keyword.toLowerCase()) ||
+              title.toLowerCase().includes(keyword.toLowerCase())
             );
 
-            if (!matchesKeywords) continue;
+            // Additional check: post must contain repository name or related terms
+            const containsRepoName = keywords.some((keyword: string) => {
+              const lowerKeyword = keyword.toLowerCase();
+              return fullContent.includes(lowerKeyword) || title.toLowerCase().includes(lowerKeyword);
+            });
+
+            if (!matchesKeywords || !containsRepoName) continue;
 
             const question = {
               title,

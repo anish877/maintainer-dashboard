@@ -30,38 +30,48 @@ export async function generateRepositoryKeywords(
     // Extract repository name without owner for better matching
     const repoName = repositoryName.split('/').pop() || repositoryName;
     
-    const prompt = `Analyze this repository and generate smart search keywords for finding bugs, issues, and complaints.
+    const prompt = `Analyze this repository and generate search keywords for finding bugs, issues, and complaints about the ACTUAL SERVICE/FRAMEWORK that users would mention.
 
 Repository: ${repositoryName}
 Description: ${repositoryDescription || 'No description available'}
 Language: ${repositoryLanguage || 'Unknown'}
 Topics: ${repositoryTopics?.join(', ') || 'None'}
 
-First, identify what this repository is about:
-- Is it a framework, library, tool, application, or website?
-- What technology stack does it use?
-- What is its main purpose or functionality?
+CRITICAL: Extract the REAL SERVICE NAME that users would actually mention when complaining about this tool. Don't use the full repository path.
 
-Then generate 25-35 specific keywords that would help find:
-1. Bug reports mentioning this specific repository/framework
-2. User complaints and frustrations about this tool
-3. Error messages and stack traces related to this technology
-4. Performance problems with this specific tool
-5. Installation and setup issues
-6. Compatibility problems
-7. Documentation issues
-8. Feature requests that indicate problems
+Examples:
+- Repository "anish877/next.js" → Users mention "Next.js" or "NextJS"
+- Repository "facebook/react" → Users mention "React" 
+- Repository "microsoft/vscode" → Users mention "VS Code" or "Visual Studio Code"
+- Repository "vercel/next.js" → Users mention "Next.js" or "NextJS"
 
-IMPORTANT: Include the repository name and common variations in your keywords.
+First, identify:
+1. What is the ACTUAL service/framework name that users would type when complaining?
+2. What are common variations and nicknames?
+3. What package names or commands are associated with this tool?
 
-Focus on:
-- Repository name variations (${repoName}, ${repoName.toLowerCase()}, etc.)
-- Technology-specific error terms
-- User frustration indicators (hate, terrible, awful, frustrating, annoying)
-- Technical problem indicators (crash, freeze, slow, timeout, fail, broken)
-- Installation and setup problems
-- Version compatibility issues
-- Framework/library specific terms
+Then generate 30-40 keywords that users would actually type when complaining about this service:
+
+1. Service name variations (Next.js, NextJS, nextjs, etc.)
+2. Common abbreviations or nicknames
+3. Package names (npm packages, pip packages, etc.)
+4. Command names or CLI tools
+5. Brand names or product names
+6. Framework/library name variations
+
+IMPORTANT: 
+- Focus on the ACTUAL SERVICE NAME, not the repository path
+- Users complain about "Next.js" not "anish877/next.js"
+- Include common variations and nicknames
+- Think about what users would actually type in search
+
+Examples of good keywords for Next.js:
+- "Next.js bug"
+- "NextJS error" 
+- "nextjs not working"
+- "Next.js crash"
+- "next.js installation"
+- "NextJS setup"
 
 Respond with JSON in this exact format:
 {
@@ -97,18 +107,34 @@ Respond with JSON in this exact format:
   } catch (error) {
     console.error(`Error generating keywords for ${repositoryName}:`, error);
     
-    // Fallback keywords if AI fails - include repository name
+    // Fallback keywords if AI fails - focus on service name
     const repoName = repositoryName.split('/').pop() || repositoryName;
+    const serviceName = repoName.toLowerCase();
+    
     return {
       keywords: [
-        repoName.toLowerCase(),
-        repositoryName.toLowerCase(),
-        'bug', 'error', 'issue', 'problem', 'broken', 'not working',
-        'crash', 'freeze', 'slow', 'timeout', 'fail', 'failed',
-        'hate', 'terrible', 'awful', 'frustrating', 'annoying',
-        'installation', 'setup', 'compatibility', 'version'
+        `${serviceName} bug`,
+        `${serviceName} error`,
+        `${serviceName} issue`,
+        `${serviceName} problem`,
+        `${serviceName} not working`,
+        `${serviceName} broken`,
+        `${serviceName} crash`,
+        `${serviceName} fail`,
+        `${serviceName} installation`,
+        `${serviceName} setup`,
+        `${serviceName} hate`,
+        `${serviceName} terrible`,
+        `${serviceName} frustrating`,
+        `${serviceName} slow`,
+        `${serviceName} timeout`,
+        serviceName,
+        // Add common variations
+        serviceName.replace(/\./g, ''),
+        serviceName.replace(/\./g, ' '),
+        serviceName.replace(/\./g, '-')
       ],
-      reasoning: 'Fallback keywords generated due to AI service error',
+      reasoning: 'Fallback keywords generated due to AI service error - focused on service name variations',
       confidence: 0.5
     };
   }

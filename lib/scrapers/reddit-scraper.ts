@@ -102,12 +102,19 @@ export class RedditScraper {
             const content = contentElement?.textContent?.trim() || '';
             const fullContent = `${title} ${content}`.toLowerCase();
             
-            // Check if post matches our search terms
+            // STRICT: Only include posts that explicitly mention the repository
             const matchesKeywords = searchTerms.some((term: string) => 
-              fullContent.includes(term.toLowerCase())
+              fullContent.includes(term.toLowerCase()) ||
+              title.toLowerCase().includes(term.toLowerCase())
             );
             
-            if (!matchesKeywords) continue;
+            // Additional check: post must contain repository name or related terms
+            const containsRepoName = searchTerms.some((term: string) => {
+              const lowerTerm = term.toLowerCase();
+              return fullContent.includes(lowerTerm) || title.toLowerCase().includes(lowerTerm);
+            });
+            
+            if (!matchesKeywords || !containsRepoName) continue;
             
             const post = {
               title,

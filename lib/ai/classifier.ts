@@ -40,7 +40,7 @@ export async function classifyPost(postId: string): Promise<ClassificationResult
     console.log(`Classifying post: ${post.title}`);
     
     // Step 1: AI Classification
-    const prompt = `Analyze this ${post.source} post and classify it as a potential bug report or issue.
+    const prompt = `Analyze this ${post.source} post and classify it as a potential bug report, issue, or user complaint.
 
 Title: ${post.title}
 Content: ${post.content.substring(0, 1000)}
@@ -49,6 +49,8 @@ Upvotes: ${post.upvotes}
 Comments: ${post.commentCount}
 Author: ${post.author}
 Posted: ${post.postedAt}
+
+CRITICAL: Only classify this as relevant if it's specifically about a particular repository, application, framework, or tool. Do NOT classify generic programming questions or general technology discussions.
 
 Respond ONLY with valid JSON in this exact format:
 {
@@ -64,7 +66,20 @@ Respond ONLY with valid JSON in this exact format:
   "sentiment": -1.0 to 1.0
 }
 
-Focus on identifying actual bugs, errors, crashes, or issues that developers should be aware of.`;
+Focus on identifying:
+- Issues specifically about a particular application, framework, or tool
+- User complaints about a specific software product
+- Technical problems with a particular library or framework
+- Questions about a specific tool or application
+- Feature requests for a particular software product
+
+REJECT if:
+- Generic programming questions
+- General technology discussions
+- Questions about multiple different tools
+- Posts that don't mention a specific application/framework
+
+Be strict - only include posts that are clearly about a specific repository/application.`;
 
     const response = await getOpenAI().chat.completions.create({
       model: 'gpt-4o-mini',

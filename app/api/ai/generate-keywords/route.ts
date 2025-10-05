@@ -10,6 +10,8 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Repository parameter is required' }, { status: 400 });
     }
 
+    console.log(`Generating keywords for repository: ${repository}`);
+
     // Try to fetch repository details from GitHub API for better keyword generation
     let repositoryDescription = '';
     let repositoryLanguage = '';
@@ -37,20 +39,20 @@ export async function GET(request: NextRequest) {
       console.log('Could not fetch GitHub repository details, using basic info');
     }
 
-    const result = await generateRepositoryKeywords(
+    const keywordResult = await generateRepositoryKeywords(
       repository,
       repositoryDescription,
       repositoryLanguage,
       repositoryTopics
     );
-    
+
     return NextResponse.json({
       success: true,
-      keywords: result.keywords,
-      reasoning: result.reasoning,
-      confidence: result.confidence
+      keywords: keywordResult.keywords,
+      reasoning: keywordResult.reasoning,
+      confidence: keywordResult.confidence
     });
-    
+
   } catch (error) {
     console.error('Error generating keywords:', error);
     return NextResponse.json({ 

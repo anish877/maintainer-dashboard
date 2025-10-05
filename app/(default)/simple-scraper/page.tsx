@@ -57,6 +57,7 @@ export default function SimpleScraper() {
   const [showIssueModal, setShowIssueModal] = useState(false);
   const [aiKeywords, setAiKeywords] = useState<{keywords: string[], reasoning: string, confidence: number} | null>(null);
   const [scrapingStats, setScrapingStats] = useState<{total: number, bugs: number, complaints: number} | null>(null);
+  const [scrapingProgress, setScrapingProgress] = useState<string>('');
 
   useEffect(() => {
     checkGitHubStatus();
@@ -134,18 +135,35 @@ export default function SimpleScraper() {
     setScrapingInProgress(true);
     setResults([]);
     setScrapingStats(null);
+    setScrapingProgress('🚀 Starting fast analysis...');
 
     try {
-      const response = await fetch('/api/simple-scraper/analyze', {
+      // Step 1: Generate keywords
+      setScrapingProgress('🤖 Generating AI keywords...');
+      const keywordResponse = await fetch(`/api/ai/generate-keywords?repository=${encodeURIComponent(selectedRepo)}`);
+      if (keywordResponse.ok) {
+        const keywordData = await keywordResponse.json();
+        setAiKeywords({
+          keywords: keywordData.keywords,
+          reasoning: keywordData.reasoning,
+          confidence: keywordData.confidence
+        });
+      }
+
+      // Step 2: Fast web search and analysis
+      setScrapingProgress(`🔍 Fast web search for ${selectedRepo}...`);
+      const response = await fetch('/api/fast-analyze', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           repository: selectedRepo,
-          sources: ['reddit', 'stackoverflow']
+          sources: ['reddit', 'stackoverflow', 'github']
         })
       });
 
+      setScrapingProgress('🧠 AI is analyzing search results...');
       const data = await response.json();
+      
       if (data.success) {
         setResults(data.results || []);
         setScrapingStats({
@@ -153,11 +171,14 @@ export default function SimpleScraper() {
           bugs: data.stats?.bugs || 0,
           complaints: data.stats?.complaints || 0
         });
+        setScrapingProgress(`✅ Found ${data.results?.length || 0} relevant issues in seconds!`);
       } else {
+        setScrapingProgress('❌ Analysis failed');
         alert(`❌ Error: ${data.message}`);
       }
     } catch (error) {
       console.error('Error analyzing repository:', error);
+      setScrapingProgress('❌ Analysis failed');
       alert('Failed to analyze repository');
     } finally {
       setScrapingInProgress(false);
@@ -258,7 +279,7 @@ export default function SimpleScraper() {
             Simple Repository Analyzer
           </h1>
           <p className="mt-2 text-lg text-gray-600 dark:text-gray-300">
-            Select a repository and let AI find bugs and complaints from Reddit and Stack Overflow
+            Select a repository and get instant results with fast web search across Reddit, Stack Overflow, and GitHub
           </p>
         </div>
 
@@ -383,7 +404,7 @@ export default function SimpleScraper() {
               disabled={scrapingInProgress}
               className="btn bg-indigo-500 hover:bg-indigo-600 text-white disabled:opacity-50"
             >
-              {scrapingInProgress ? '⏳ Analyzing...' : '🔍 Analyze Repository'}
+              {scrapingInProgress ? '⚡ Fast Analysis...' : '⚡ Fast Web Search'}
             </button>
           </div>
         )}
@@ -398,8 +419,13 @@ export default function SimpleScraper() {
                   Analyzing Repository
                 </h3>
                 <p className="text-sm text-gray-600 dark:text-gray-300">
-                  AI is searching Reddit and Stack Overflow for bugs and complaints related to {selectedRepo}...
+                  {scrapingProgress}
                 </p>
+                <div className="mt-2">
+                  <div className="w-full bg-gray-200 rounded-full h-2 dark:bg-gray-700">
+                    <div className="bg-indigo-600 h-2 rounded-full animate-pulse" style={{width: '60%'}}></div>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
