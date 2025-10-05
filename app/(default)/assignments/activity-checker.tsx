@@ -188,18 +188,22 @@ export default function ActivityChecker({
           </div>
 
           {/* Fork Activity Section */}
-          {report.forkActivity.hasFork && (
-            <div className="p-3 bg-blue-50 rounded border border-blue-200">
-              <h3 className="font-semibold text-blue-900 mb-2">🍴 Fork Activity</h3>
-              <div className="space-y-1 text-sm">
-                <p><strong>Fork:</strong> <a href={report.forkActivity.forkUrl} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">{report.forkActivity.forkName}</a></p>
-                <p><strong>Commits in Fork:</strong> {report.forkActivity.totalForkCommits}</p>
-                {report.forkActivity.lastForkCommit && (
-                  <p><strong>Last Fork Commit:</strong> {new Date(report.forkActivity.lastForkCommit.date).toLocaleString()}</p>
-                )}
-              </div>
+          <div className="p-3 bg-blue-50 rounded border border-blue-200">
+            <h3 className="font-semibold text-blue-900 mb-2">🍴 Fork Activity</h3>
+            <div className="space-y-1 text-sm">
+              {report.forkActivity.hasFork ? (
+                <>
+                  <p><strong>Fork:</strong> <a href={report.forkActivity.forkUrl} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">{report.forkActivity.forkName}</a></p>
+                  <p><strong>Commits in Fork:</strong> {report.forkActivity.totalForkCommits}</p>
+                  {report.forkActivity.lastForkCommit && (
+                    <p><strong>Last Fork Commit:</strong> {new Date(report.forkActivity.lastForkCommit.date).toLocaleString()}</p>
+                  )}
+                </>
+              ) : (
+                <p className="text-gray-600">No fork found for this assignee</p>
+              )}
             </div>
-          )}
+          </div>
 
           <div className="p-3 bg-white rounded border">
             <h3 className="font-semibold text-gray-900 mb-2 flex items-center gap-2">
