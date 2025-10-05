@@ -11,7 +11,7 @@ import type { ChartData } from 'chart.js'
 import 'chartjs-adapter-moment'
 
 // Import utilities
-import { formatValue } from '@/components/utils/utils'
+import { formatThousands } from '@/components/utils/utils'
 
 Chart.register(BarController, BarElement, LinearScale, TimeScale, Tooltip, Legend)
 
@@ -57,7 +57,7 @@ export default function BarChart01({
             },
             ticks: {
               maxTicksLimit: 5,
-              callback: (value) => formatValue(+value),
+              callback: (value) => formatThousands(+value),
               color: darkMode ? textColor.dark : textColor.light,
             },
             grid: {
@@ -91,7 +91,7 @@ export default function BarChart01({
           tooltip: {
             callbacks: {
               title: () => '', // Disable tooltip title
-              label: (context) => formatValue(context.parsed.y),
+              label: (context) => formatThousands(context.parsed.y),
             },
             bodyColor: darkMode ? tooltipBodyColor.dark : tooltipBodyColor.light,
             backgroundColor: darkMode ? tooltipBgColor.dark : tooltipBgColor.light,
@@ -157,7 +157,7 @@ export default function BarChart01({
             label.style.lineHeight = 'calc(1.25 / 0.875)'
             // @ts-ignore
             const theValue: number = c.data.datasets[item.datasetIndex!].data.reduce((a, b) => a + b, 0)
-            const valueText = document.createTextNode(formatValue(theValue))
+            const valueText = document.createTextNode(formatThousands(theValue))
             const labelText = document.createTextNode(item.text)
             value.appendChild(valueText)
             label.appendChild(labelText)

@@ -45,7 +45,7 @@ export default function AssignmentsContent() {
 
   const fetchAssignments = async () => {
     try {
-      console.log('🔍 Fetching assignments...', { 
+      console.log('Fetching assignments...', { 
         sessionStatus: status, 
         hasSession: !!session,
         userId: session?.user?.id 
@@ -60,26 +60,26 @@ export default function AssignmentsContent() {
       if (filters.assigneeId) params.append('assigneeId', filters.assigneeId)
       
       const url = `/api/assignments?${params.toString()}`
-      console.log('🔍 Making request to:', url)
+      console.log('Making request to:', url)
       
       const response = await fetch(url)
-      console.log('🔍 Response status:', response.status)
+      console.log('Response status:', response.status)
       
       if (!response.ok) {
         if (response.status === 401) {
-          console.log('❌ Authentication required')
+          console.log('Authentication required')
           setError('Please sign in to view assignments')
           return
         }
-        console.log('❌ Request failed with status:', response.status)
+        console.log('Request failed with status:', response.status)
         throw new Error(`Failed to fetch assignments: ${response.status}`)
       }
       
       const data = await response.json()
-      console.log('✅ Assignments fetched:', data.assignments?.length || 0)
+      console.log('Assignments fetched:', data.assignments?.length || 0)
       setAssignments(data.assignments || [])
     } catch (err: any) {
-      console.error('❌ Error fetching assignments:', err)
+      console.error('Error fetching assignments:', err)
       setError(err.message)
     } finally {
       setLoading(false)

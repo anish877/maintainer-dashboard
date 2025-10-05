@@ -310,7 +310,7 @@ export default function TriagePage() {
               >
                 {isLoading ? (
                   <>
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                    <div className="h-4 w-16 bg-white/20 rounded mr-2 animate-pulse"></div>
                     Triaging...
                   </>
                 ) : (

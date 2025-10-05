@@ -154,9 +154,10 @@ export default function SpamDetectionPage() {
     return (
       <div className="px-4 sm:px-6 lg:px-8 py-8 w-full max-w-[96rem] mx-auto">
         <div className="flex items-center justify-center min-h-[400px]">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-600 mx-auto mb-4"></div>
-            <p className="text-gray-500 dark:text-gray-400">Loading repository data...</p>
+          <div className="animate-pulse space-y-4 w-full max-w-md">
+            <div className="h-8 bg-gray-200 dark:bg-gray-700 rounded w-48 mx-auto"></div>
+            <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-32 mx-auto"></div>
+            <div className="h-32 bg-gray-200 dark:bg-gray-700 rounded"></div>
           </div>
         </div>
       </div>

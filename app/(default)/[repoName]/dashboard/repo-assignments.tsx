@@ -152,9 +152,11 @@ export default function RepoAssignments({ repoName }: RepoAssignmentsProps) {
     return (
       <div className="bg-white dark:bg-gray-800 shadow-sm rounded-xl">
         <div className="px-5 pt-5">
-          <div className="flex items-center justify-center py-8">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600"></div>
-            <span className="ml-2 text-gray-500 dark:text-gray-400">Loading assignments...</span>
+          <div className="animate-pulse space-y-4">
+            <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-32"></div>
+            {[...Array(3)].map((_, i) => (
+              <div key={i} className="h-16 bg-gray-200 dark:bg-gray-700 rounded"></div>
+            ))}
           </div>
         </div>
       </div>

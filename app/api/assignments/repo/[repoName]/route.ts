@@ -79,6 +79,15 @@ export async function GET(
       }, { status: 500 })
     }
 
+    // Debug: Log all issues and their assignee status
+    console.log(`📋 Processing ${issues.length} issues:`)
+    issues.forEach((issue, index) => {
+      console.log(`  Issue #${issue.number}: "${issue.title}" - Assignees: ${issue.assignees?.length || 0}`)
+      if (issue.assignees && issue.assignees.length > 0) {
+        console.log(`    Assignees: ${issue.assignees.map(a => a.login).join(', ')}`)
+      }
+    })
+
     // Process issues to create assignments
     const repoAssignments = (await Promise.all(
       issues
@@ -185,6 +194,8 @@ export async function GET(
           }
         })
     )).filter(assignment => assignment !== null)
+
+    console.log(`✅ Created ${repoAssignments.length} assignments from ${issues.length} issues`)
 
     // Apply automated status calculation to all assignments (TEST MODE: using minutes)
     const assignments = repoAssignments.map(assignment => {

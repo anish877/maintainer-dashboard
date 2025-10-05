@@ -11,10 +11,6 @@ import DashboardCard04 from './dashboard-card-04'
 import DashboardCard05 from './dashboard-card-05'
 import DashboardCard06 from './dashboard-card-06'
 import DashboardCard07 from './dashboard-card-07'
-import DashboardCard08 from './dashboard-card-08'
-import DashboardCard09 from './dashboard-card-09'
-import DashboardCard10 from './dashboard-card-10'
-import DashboardCard11 from './dashboard-card-11'
 
 export default function Dashboard() {
   const { data: session } = useSession()
@@ -84,16 +80,8 @@ export default function Dashboard() {
         <DashboardCard05 />
         {/* Programming Languages Distribution */}
         <DashboardCard06 />
-        {/* Recent Activity Table */}
+        {/* AI Assistant Chat */}
         <DashboardCard07 />
-        {/* Line chart (Sales Over Time) */}
-        <DashboardCard08 />
-        {/* Stacked bar chart (Sales VS Refunds) */}
-        <DashboardCard09 />
-        {/* Card (Recent Activity) */}
-        <DashboardCard10 />
-        {/* Card (Income/Expenses) */}
-        <DashboardCard11 />        
 
       </div>      
     </div>

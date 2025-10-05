@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { Check, Search, BarChart3, Lightbulb, Flame, Clock, X } from 'lucide-react'
 
 interface ActivityReport {
   assignmentId: string
@@ -52,9 +53,9 @@ export default function ActivityChecker({
   assignmentId, 
   onActivityChecked 
 }: ActivityCheckerProps) {
-  const [isChecking, setIsChecking] = useState(false)
   const [report, setReport] = useState<ActivityReport | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [isChecking, setIsChecking] = useState(false)
 
   const checkActivity = async () => {
     setIsChecking(true)
@@ -117,7 +118,11 @@ export default function ActivityChecker({
           disabled={isChecking}
           className="inline-flex items-center px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 disabled:cursor-not-allowed rounded-md transition-colors"
         >
-          {isChecking ? 'Checking...' : '🔍 Check Activity'}
+{isChecking ? 'Checking...' : (
+            <>
+              <Search className="w-4 h-4 mr-2" /> Check Activity
+            </>
+          )}
         </button>
         
         {report && (
@@ -134,7 +139,9 @@ export default function ActivityChecker({
 
       {error && (
         <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
-          <p className="text-red-600">❌ {error}</p>
+          <p className="text-red-600 flex items-center gap-2">
+            <X className="w-4 h-4" /> {error}
+          </p>
         </div>
       )}
 
@@ -142,7 +149,9 @@ export default function ActivityChecker({
         <div className="space-y-4 p-4 bg-gray-50 rounded-lg">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <h3 className="font-semibold text-gray-900 mb-2">📊 Activity Summary</h3>
+              <h3 className="font-semibold text-gray-900 mb-2 flex items-center gap-2">
+                <BarChart3 className="w-4 h-4" /> Activity Summary
+              </h3>
               <div className="space-y-1 text-sm">
                 <p><strong>Assignee:</strong> <a href={report.assignee.profile} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">{report.assignee.login}</a></p>
                 <p><strong>Issue:</strong> <a href={report.issueUrl} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">#{report.issueNumber}</a></p>
@@ -152,7 +161,9 @@ export default function ActivityChecker({
             </div>
             
             <div>
-              <h3 className="font-semibold text-gray-900 mb-2">⏰ Timeline</h3>
+              <h3 className="font-semibold text-gray-900 mb-2 flex items-center gap-2">
+                <Clock className="w-4 h-4" /> Timeline
+              </h3>
               <div className="space-y-1 text-sm">
                 <p><strong>Issue Created:</strong> {new Date(report.timestamps.issueCreated).toLocaleString()}</p>
                 <p><strong>Last Activity:</strong> {new Date(report.timestamps.lastActivity).toLocaleString()}</p>
@@ -165,7 +176,9 @@ export default function ActivityChecker({
           </div>
 
           <div className="p-3 bg-white rounded border">
-            <h3 className="font-semibold text-gray-900 mb-2">💡 Recommendation</h3>
+            <h3 className="font-semibold text-gray-900 mb-2 flex items-center gap-2">
+              <Lightbulb className="w-4 h-4" /> Recommendation
+            </h3>
             <p className="text-gray-700">{report.recommendation}</p>
             <p className="text-sm text-gray-600 mt-1">{report.message}</p>
           </div>

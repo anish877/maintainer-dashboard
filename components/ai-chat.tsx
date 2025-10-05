@@ -72,6 +72,21 @@ export function AIChat({
           throw new Error('Failed to get response')
         }
 
+        // Check if response is restricted
+        const contentType = response.headers.get('content-type')
+        if (contentType?.includes('application/json')) {
+          const data = await response.json()
+          if (data.restricted) {
+            const assistantMessage: AIMessage = {
+              role: 'assistant',
+              content: data.error
+            }
+            setMessages([...newMessages, assistantMessage])
+            setIsLoading(false)
+            return
+          }
+        }
+
         const reader = response.body?.getReader()
         const decoder = new TextDecoder()
         let fullResponse = ''
@@ -132,6 +147,18 @@ export function AIChat({
         }
 
         const data = await response.json()
+        
+        // Handle restricted responses
+        if (data.restricted) {
+          const assistantMessage: AIMessage = {
+            role: 'assistant',
+            content: data.error
+          }
+          setMessages([...newMessages, assistantMessage])
+          setIsLoading(false)
+          return
+        }
+
         const assistantMessage: AIMessage = {
           role: 'assistant',
           content: data.response
