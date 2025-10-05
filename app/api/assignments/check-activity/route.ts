@@ -155,13 +155,21 @@ export async function POST(request: NextRequest) {
         forkActivity.forkName = assigneeFork.full_name
         forkActivity.forkUrl = assigneeFork.html_url
 
-        // Get commits from the fork
+        // Get commits from the fork since last activity
         const { data: forkCommitsData } = await octokit.rest.repos.listCommits({
           owner: assigneeFork.owner.login,
           repo: assigneeFork.name,
           author: assignee.login,
           since: lastActivityAt.toISOString(),
           per_page: 10
+        })
+
+        // Get total commits from the fork (not filtered by time)
+        const { data: totalForkCommitsData } = await octokit.rest.repos.listCommits({
+          owner: assigneeFork.owner.login,
+          repo: assigneeFork.name,
+          author: assignee.login,
+          per_page: 100
         })
 
         forkCommits = forkCommitsData.map(commit => ({
@@ -173,10 +181,11 @@ export async function POST(request: NextRequest) {
           forkName: assigneeFork.full_name
         }))
 
-        forkActivity.totalForkCommits = forkCommitsData.length
+        forkActivity.totalForkCommits = totalForkCommitsData.length
         forkActivity.lastForkCommit = forkCommitsData[0] || null
 
         console.log(`📊 Found ${forkCommitsData.length} commits in fork since ${lastActivityAt.toISOString()}`)
+        console.log(`📊 Total commits in fork: ${totalForkCommitsData.length}`)
       } else {
         console.log(`❌ No fork found for ${assignee.login}`)
       }

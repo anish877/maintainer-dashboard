@@ -256,7 +256,6 @@ model Issue {
   comments        IssueComment[]
   activities      IssueActivity[]
   sentimentAnalysis IssueSentiment?
-  lifecycleTracking IssueLifecycle?
 
   @@unique([repositoryId, number])
   @@index([githubId])

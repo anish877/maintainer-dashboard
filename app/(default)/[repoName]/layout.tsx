@@ -1,4 +1,3 @@
-import { useParams } from 'next/navigation'
 import { Suspense } from 'react'
 
 export default function RepoLayout({
