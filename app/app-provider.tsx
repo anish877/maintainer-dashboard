@@ -1,30 +1,20 @@
 'use client'
 
-import { createContext, Dispatch, SetStateAction, useContext, useState } from 'react'
+import { createContext, useContext } from 'react'
 
 interface ContextProps {
-  sidebarOpen: boolean
-  setSidebarOpen: Dispatch<SetStateAction<boolean>>
-  sidebarExpanded: boolean
-  setSidebarExpanded: Dispatch<SetStateAction<boolean>>
+  // Empty context for now, can be extended later if needed
 }
 
-const AppContext = createContext<ContextProps>({
-  sidebarOpen: false,
-  setSidebarOpen: (): boolean => false,
-  sidebarExpanded: false,
-  setSidebarExpanded: (): boolean => false
-})
+const AppContext = createContext<ContextProps>({})
 
 export default function AppProvider({
   children,
 }: {
   children: React.ReactNode
 }) {  
-  const [sidebarOpen, setSidebarOpen] = useState<boolean>(false)
-  const [sidebarExpanded, setSidebarExpanded] = useState<boolean>(false)
   return (
-    <AppContext.Provider value={{ sidebarOpen, setSidebarOpen, sidebarExpanded, setSidebarExpanded }}>
+    <AppContext.Provider value={{}}>
       {children}
     </AppContext.Provider>
   )
