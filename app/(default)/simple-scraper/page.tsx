@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
+import { useParams, useRouter } from 'next/navigation';
 import ModalBasic from '@/components/modal-basic';
 
 interface GitHubRepo {
@@ -48,6 +49,10 @@ interface GeneratedIssue {
 
 export default function SimpleScraper() {
   const { data: session } = useSession();
+  const params = useParams();
+  const router = useRouter();
+  const repoName = params.repoName as string;
+  
   const [selectedRepo, setSelectedRepo] = useState<string | null>(null);
   const [availableRepos, setAvailableRepos] = useState<GitHubRepo[]>([]);
   const [githubStatus, setGithubStatus] = useState<'checking' | 'connected' | 'disconnected'>('checking');
@@ -58,6 +63,15 @@ export default function SimpleScraper() {
   const [aiKeywords, setAiKeywords] = useState<{keywords: string[], reasoning: string, confidence: number} | null>(null);
   const [scrapingStats, setScrapingStats] = useState<{total: number, bugs: number, complaints: number} | null>(null);
   const [scrapingProgress, setScrapingProgress] = useState<string>('');
+  const [repo, setRepo] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (repoName) {
+      fetchRepoData();
+    }
+  }, [repoName]);
 
   useEffect(() => {
     checkGitHubStatus();
@@ -72,6 +86,33 @@ export default function SimpleScraper() {
       generateKeywords();
     }
   }, [selectedRepo]);
+
+  const fetchRepoData = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      const response = await fetch(`/api/github/repos/${repoName}`);
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        if (response.status === 403 && errorData.isCollaborator) {
+          setError('You are not the owner of this repository. You may be a collaborator.');
+          return;
+        }
+        throw new Error(errorData.error || 'Failed to fetch repository data');
+      }
+      
+      const data = await response.json();
+      setRepo(data.repo);
+      setSelectedRepo(repoName); // Auto-select the repo from URL
+    } catch (err) {
+      console.error('Error fetching repo data:', err);
+      setError(err instanceof Error ? err.message : 'Failed to fetch repository data');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const checkGitHubStatus = async () => {
     if (!session?.user?.id) {
@@ -246,6 +287,50 @@ export default function SimpleScraper() {
     }
   };
 
+  if (loading) {
+    return (
+      <div className="px-4 sm:px-6 lg:px-8 py-8 w-full max-w-4xl mx-auto">
+        <div className="flex items-center justify-center min-h-[400px]">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto mb-4"></div>
+            <p className="text-gray-500 dark:text-gray-400">Loading repository data...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (error || !repo) {
+    const isCollaboratorError = error?.includes('not the owner of this repository');
+    
+    return (
+      <div className="px-4 sm:px-6 lg:px-8 py-8 w-full max-w-4xl mx-auto">
+        <div className="flex items-center justify-center min-h-[400px]">
+          <div className="text-center">
+            <div className="text-red-500 mb-4 text-4xl">
+              {isCollaboratorError ? '👥' : '⚠️'}
+            </div>
+            <h2 className="text-xl font-semibold text-gray-800 dark:text-gray-100 mb-2">
+              {isCollaboratorError ? 'Not Repository Owner' : 'Repository Not Found'}
+            </h2>
+            <p className="text-gray-500 dark:text-gray-400 mb-4">
+              {isCollaboratorError
+                ? 'You appear to be a collaborator on this repository, but you are not the owner. Some features may be limited.'
+                : error || 'The requested repository could not be found.'
+              }
+            </p>
+            <button
+              onClick={() => router.back()}
+              className="inline-flex items-center gap-2 bg-indigo-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-indigo-700 transition-colors"
+            >
+              ← Go Back
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   if (!session) {
     return (
       <div className="px-4 sm:px-6 lg:px-8 py-8 w-full max-w-4xl mx-auto">
@@ -273,14 +358,35 @@ export default function SimpleScraper() {
     <div className="px-4 sm:px-6 lg:px-8 py-8">
       <div className="max-w-6xl mx-auto">
         
-        {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-            Simple Repository Analyzer
-          </h1>
-          <p className="mt-2 text-lg text-gray-600 dark:text-gray-300">
-            Select a repository and get instant results with fast web search across Reddit, Stack Overflow, and GitHub
-          </p>
+        {/* Page header */}
+        <div className="sm:flex sm:justify-between sm:items-center mb-8">
+          {/* Left: Title with back button */}
+          <div className="mb-4 sm:mb-0">
+            <div className="flex items-center space-x-4 mb-2">
+              <button
+                onClick={() => router.back()}
+                className="inline-flex items-center gap-2 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 transition-colors"
+              >
+                ← Back
+              </button>
+            </div>
+            <h1 className="text-2xl md:text-3xl text-gray-800 dark:text-gray-100 font-bold">
+              🚀 Simple Repository Analyzer
+            </h1>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+              Fast web search analysis for <strong>{repo.name}</strong>
+            </p>
+          </div>
+
+          {/* Right: Repository info */}
+          <div className="text-right">
+            <div className="text-sm text-gray-500 dark:text-gray-400">
+              {repo.open_issues_count} open issues
+            </div>
+            <div className="text-xs text-gray-400 dark:text-gray-500">
+              {repo.owner.login}/{repo.name}
+            </div>
+          </div>
         </div>
 
         {/* GitHub Connection Status */}
@@ -312,57 +418,27 @@ export default function SimpleScraper() {
           </div>
         </div>
 
-        {/* Repository Selection */}
-        {githubStatus === 'connected' && (
+        {/* Repository Confirmation */}
+        {githubStatus === 'connected' && selectedRepo && (
           <div className="bg-white dark:bg-gray-800 shadow rounded-lg p-6 mb-6">
-            <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">
-              Select Repository to Analyze
-            </h3>
-            
-            {availableRepos.length > 0 ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {availableRepos.slice(0, 9).map((repo) => (
-                  <div
-                    key={repo.id}
-                    onClick={() => setSelectedRepo(repo.fullName)}
-                    className={`p-4 border rounded-lg cursor-pointer transition-colors ${
-                      selectedRepo === repo.fullName
-                        ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-900/20'
-                        : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
-                    }`}
-                  >
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
-                        <h4 className="font-medium text-gray-900 dark:text-white">
-                          {repo.name}
-                        </h4>
-                        <p className="text-sm text-gray-600 dark:text-gray-300 mt-1">
-                          {repo.description}
-                        </p>
-                        <div className="flex items-center mt-2 text-xs text-gray-500 dark:text-gray-400">
-                          <span className="mr-4">⭐ {repo.stars}</span>
-                          <span className="mr-4">🔧 {repo.language}</span>
-                          <span>{repo.visibility}</span>
-                        </div>
-                      </div>
-                      {selectedRepo === repo.fullName && (
-                        <div className="ml-2">
-                          <svg className="w-5 h-5 text-indigo-500" fill="currentColor" viewBox="0 0 20 20">
-                            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                          </svg>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                ))}
+            <div className="flex items-center justify-between">
+              <div className="flex items-center">
+                <div className="w-3 h-3 rounded-full mr-3 bg-green-500"></div>
+                <div>
+                  <h3 className="text-lg font-medium text-gray-900 dark:text-white">
+                    Repository Selected
+                  </h3>
+                  <p className="text-sm text-gray-600 dark:text-gray-300">
+                    Analyzing: <strong>{selectedRepo}</strong>
+                  </p>
+                </div>
               </div>
-            ) : (
-              <div className="text-center py-8">
-                <p className="text-gray-600 dark:text-gray-300">
-                  Loading repositories...
-                </p>
+              <div className="flex items-center text-sm text-gray-500 dark:text-gray-400">
+                <span className="mr-4">⭐ {repo.stargazers_count}</span>
+                <span className="mr-4">🔧 {repo.language || 'N/A'}</span>
+                <span>{repo.private ? 'Private' : 'Public'}</span>
               </div>
-            )}
+            </div>
           </div>
         )}
 

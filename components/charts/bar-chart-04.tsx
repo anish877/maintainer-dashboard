@@ -119,8 +119,12 @@ export default function BarChart04({
           while (ul.firstChild) {
             ul.firstChild.remove()
           }
-          // Reuse the built-in legendItems generator
-          const items = c.options.plugins?.legend?.labels?.generateLabels?.(c)
+          // Reuse the built-in legendItems generator with proper null checks
+          const legendPlugin = c.options.plugins?.legend
+          if (!legendPlugin || !legendPlugin.labels?.generateLabels) {
+            return
+          }
+          const items = legendPlugin.labels.generateLabels(c)
           items?.forEach((item) => {
             const li = document.createElement('li')
             // Button element

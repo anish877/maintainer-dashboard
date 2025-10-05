@@ -1,276 +1,315 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { useParams, useRouter } from 'next/navigation'
-import { useSession } from 'next-auth/react'
-import { useToastNotifications } from '@/lib/toast'
-import { Users, AlertTriangle, Bot, Rocket, X, Search, RefreshCw } from 'lucide-react'
+import { useState, useEffect } from 'react';
+import { useParams, useRouter } from 'next/navigation';
+import { useSession } from 'next-auth/react';
+import ModalBasic from '@/components/modal-basic';
 
-interface ScrapedPost {
+interface GitHubRepo {
+  id: number;
+  name: string;
+  fullName: string;
+  description: string;
+  owner: string;
+  stars: number;
+  language: string;
+  visibility: string;
+}
+
+interface ScrapingResult {
   id: string;
-  source: string;
-  sourceUrl: string;
   title: string;
   content: string;
+  source: string;
+  sourceUrl: string;
   author: string;
   upvotes: number;
   commentCount: number;
-  tags: string[];
   postedAt: string;
-  scrapedAt: string;
-  processed: boolean;
-  processedIssue?: ProcessedIssue;
-  targetRepository?: string;
-  scrapeKeywords?: string[];
-}
-
-interface ProcessedIssue {
-  id: string;
-  type: string;
+  isBug: boolean;
   confidence: number;
-  summary: string;
   severity: string;
+  summary: string;
+  technicalDetails: string;
   suggestedLabels: string[];
   affectedArea: string;
   userImpact: number;
-  sentimentScore: number;
-  isDuplicate: boolean;
-  status: string;
-  createdAt: string;
-  githubUrl?: string;
-  technicalDetails?: string;
+  sentiment: number;
+}
+
+interface GeneratedIssue {
+  title: string;
+  body: string;
+  labels: string[];
+  severity: string;
+  type: string;
+  sourceUrl: string;
+  sourcePost: string;
 }
 
 export default function RepoScraperPage() {
-  const params = useParams()
-  const router = useRouter()
-  const { data: session, status } = useSession()
-  const { success, error: showError } = useToastNotifications()
-  const repoName = params.repoName as string
+  const { data: session } = useSession();
+  const params = useParams();
+  const router = useRouter();
+  const repoName = params.repoName as string;
   
-  const [repo, setRepo] = useState<any>(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-  const [posts, setPosts] = useState<ScrapedPost[]>([])
-  const [scrapingInProgress, setScrapingInProgress] = useState(false)
-  const [githubStatus, setGithubStatus] = useState<'checking' | 'connected' | 'disconnected'>('checking')
-  const [repoKeywords, setRepoKeywords] = useState<{keywords: string[], reasoning: string, confidence: number} | null>(null)
-  const [filter, setFilter] = useState<'all' | 'pending' | 'processed' | 'duplicates'>('all')
-  const [source, setSource] = useState<'all' | 'reddit' | 'stackoverflow'>('all')
+  const [selectedRepo, setSelectedRepo] = useState<string | null>(null);
+  const [availableRepos, setAvailableRepos] = useState<GitHubRepo[]>([]);
+  const [githubStatus, setGithubStatus] = useState<'checking' | 'connected' | 'disconnected'>('checking');
+  const [scrapingInProgress, setScrapingInProgress] = useState(false);
+  const [results, setResults] = useState<ScrapingResult[]>([]);
+  const [editingIssue, setEditingIssue] = useState<GeneratedIssue | null>(null);
+  const [showIssueModal, setShowIssueModal] = useState(false);
+  const [aiKeywords, setAiKeywords] = useState<{keywords: string[], reasoning: string, confidence: number} | null>(null);
+  const [scrapingStats, setScrapingStats] = useState<{total: number, bugs: number, complaints: number} | null>(null);
+  const [scrapingProgress, setScrapingProgress] = useState<string>('');
+  const [repo, setRepo] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (repoName) {
-      fetchRepoData()
-      checkGitHubStatus()
+      fetchRepoData();
     }
-  }, [repoName])
+  }, [repoName]);
 
   useEffect(() => {
-    if (repo) {
-      fetchData()
-      fetchRepoKeywords()
+    checkGitHubStatus();
+  }, [session?.user?.id]);
+
+  useEffect(() => {
+    fetchUserRepos();
+  }, [githubStatus, session?.user?.id]);
+
+  useEffect(() => {
+    if (selectedRepo) {
+      generateKeywords();
     }
-  }, [repo, filter, source])
+  }, [selectedRepo]);
 
   const fetchRepoData = async () => {
     try {
-      setLoading(true)
-      setError(null)
+      setLoading(true);
+      setError(null);
       
-      const response = await fetch(`/api/github/repos/${repoName}`)
+      const response = await fetch(`/api/github/repos/${repoName}`);
       
       if (!response.ok) {
-        const errorData = await response.json()
+        const errorData = await response.json();
         if (response.status === 403 && errorData.isCollaborator) {
-          setError('You are not the owner of this repository. You may be a collaborator.')
-          return
+          setError('You are not the owner of this repository. You may be a collaborator.');
+          return;
         }
-        throw new Error(errorData.error || 'Failed to fetch repository data')
+        throw new Error(errorData.error || 'Failed to fetch repository data');
       }
       
-      const data = await response.json()
-      setRepo(data.repo)
+      const data = await response.json();
+      setRepo(data.repo);
+      setSelectedRepo(repoName); // Auto-select the repo from URL
     } catch (err) {
-      console.error('Error fetching repo data:', err)
-      setError(err instanceof Error ? err.message : 'Failed to fetch repository data')
+      console.error('Error fetching repo data:', err);
+      setError(err instanceof Error ? err.message : 'Failed to fetch repository data');
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   const checkGitHubStatus = async () => {
     if (!session?.user?.id) {
-      setGithubStatus('disconnected')
-      return
+      setGithubStatus('disconnected');
+      return;
     }
 
     try {
-      const response = await fetch('/api/github/status')
+      const response = await fetch('/api/github/status');
       if (response.ok) {
-        const data = await response.json()
-        setGithubStatus(data.connected ? 'connected' : 'disconnected')
+        const data = await response.json();
+        setGithubStatus(data.connected ? 'connected' : 'disconnected');
       } else {
-        setGithubStatus('disconnected')
+        setGithubStatus('disconnected');
       }
     } catch (error) {
-      setGithubStatus('disconnected')
+      setGithubStatus('disconnected');
     }
-  }
+  };
 
-  const fetchRepoKeywords = async () => {
-    if (!repo) return
+  const fetchUserRepos = async () => {
+    if (!session?.user?.id || githubStatus !== 'connected') {
+      return;
+    }
+
+    try {
+      const response = await fetch('/api/github/repos');
+      if (response.ok) {
+        const data = await response.json();
+        setAvailableRepos(data.repos || []);
+      }
+    } catch (error) {
+      console.error('Error fetching user repositories:', error);
+    }
+  };
+
+  const generateKeywords = async () => {
+    if (!selectedRepo) return;
     
     try {
-      const response = await fetch(`/api/github/repo-info?repository=${encodeURIComponent(repo.full_name)}`)
+      const response = await fetch(`/api/ai/generate-keywords?repository=${encodeURIComponent(selectedRepo)}`);
       if (response.ok) {
-        const data = await response.json()
-        setRepoKeywords({
+        const data = await response.json();
+        setAiKeywords({
           keywords: data.keywords,
           reasoning: data.reasoning,
           confidence: data.confidence
-        })
+        });
       }
     } catch (error) {
-      console.error('Error fetching repo keywords:', error)
+      console.error('Error generating keywords:', error);
     }
-  }
+  };
 
-  const fetchData = async () => {
+  const analyzeRepository = async () => {
+    if (!selectedRepo) {
+      alert('Please select a repository first');
+      return;
+    }
+
+    setScrapingInProgress(true);
+    setResults([]);
+    setScrapingStats(null);
+    setScrapingProgress('🚀 Starting fast analysis...');
+
     try {
-      const params = new URLSearchParams()
-      if (filter !== 'all') params.append('filter', filter)
-      if (source !== 'all') params.append('source', source)
-      if (repo && repo.full_name) {
-        params.append('repository', repo.full_name)
+      // Step 1: Generate keywords
+      setScrapingProgress('🤖 Generating AI keywords...');
+      const keywordResponse = await fetch(`/api/ai/generate-keywords?repository=${encodeURIComponent(selectedRepo)}`);
+      if (keywordResponse.ok) {
+        const keywordData = await keywordResponse.json();
+        setAiKeywords({
+          keywords: keywordData.keywords,
+          reasoning: keywordData.reasoning,
+          confidence: keywordData.confidence
+        });
       }
-      
-      const response = await fetch(`/api/scraper/posts?${params}`)
-      const data = await response.json()
-      
-      setPosts(data.posts || [])
-    } catch (error) {
-      console.error('Error fetching data:', error)
-    }
-  }
 
-  const scrapeForRepository = async (sources: string[] = ['reddit', 'stackoverflow']) => {
-    if (!repo) {
-      showError('Repository not loaded')
-      return
-    }
-
-    setScrapingInProgress(true)
-    try {
-      const response = await fetch('/api/scraper/repo-scrape', {
+      // Step 2: Fast web search and analysis
+      setScrapingProgress(`🔍 Fast web search for ${selectedRepo}...`);
+      const response = await fetch('/api/fast-analyze', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          repository: repo.full_name,
-          sources: sources
+          repository: selectedRepo,
+          sources: ['reddit', 'stackoverflow', 'github']
         })
-      })
+      });
 
-      const data = await response.json()
-      if (data.success) {
-        success(`✅ Scraping completed for ${repo.full_name}!\n\nResults:\n- Total posts: ${data.results.totalPosts}\n- New posts: ${data.results.newPosts}\n- Errors: ${data.results.errors}`)
-        fetchData()
-      } else {
-        showError(`❌ Error: ${data.message}`)
-      }
-    } catch (error) {
-      console.error('Error scraping repository:', error)
-      showError('Failed to scrape repository')
-    } finally {
-      setScrapingInProgress(false)
-    }
-  }
-
-  const updateIssueStatus = async (issueId: string, status: string) => {
-    try {
-      const response = await fetch(`/api/scraper/issues/${issueId}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status })
-      })
+      setScrapingProgress('🧠 AI is analyzing search results...');
+      const data = await response.json();
       
-      if (response.ok) {
-        fetchData()
+      if (data.success) {
+        setResults(data.results || []);
+        setScrapingStats({
+          total: data.stats?.total || 0,
+          bugs: data.stats?.bugs || 0,
+          complaints: data.stats?.complaints || 0
+        });
+        setScrapingProgress(`✅ Found ${data.results?.length || 0} relevant issues in seconds!`);
+      } else {
+        setScrapingProgress('❌ Analysis failed');
+        alert(`❌ Error: ${data.message}`);
       }
     } catch (error) {
-      console.error('Error updating issue status:', error)
+      console.error('Error analyzing repository:', error);
+      setScrapingProgress('❌ Analysis failed');
+      alert('Failed to analyze repository');
+    } finally {
+      setScrapingInProgress(false);
     }
-  }
+  };
 
-  const syncToGitHub = async () => {
-    if (!repo) {
-      showError('Repository not loaded')
-      return
-    }
-
-    const [owner, repoName] = repo.full_name.split('/')
+  const generateIssue = async (result: ScrapingResult) => {
     try {
-      const response = await fetch('/api/github/sync', {
+      const response = await fetch('/api/simple-scraper/generate-issue', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ owner, repo: repoName, limit: 10 })
-      })
+        body: JSON.stringify({
+          repository: selectedRepo,
+          result: result
+        })
+      });
 
-      const data = await response.json()
+      const data = await response.json();
       if (data.success) {
-        success(`✅ Synced ${data.synced} issues to GitHub!`)
-        fetchData()
+        setEditingIssue(data.issue);
+        setShowIssueModal(true);
       } else {
-        showError(`❌ Error: ${data.message}`)
+        alert(`❌ Error: ${data.message}`);
       }
     } catch (error) {
-      console.error('Error syncing to GitHub:', error)
-      showError('Failed to sync to GitHub')
+      console.error('Error generating issue:', error);
+      alert('Failed to generate issue');
     }
-  }
+  };
+
+  const postIssue = async (issue: GeneratedIssue) => {
+    if (!selectedRepo) return;
+
+    try {
+      const response = await fetch('/api/simple-scraper/post-issue', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          repository: selectedRepo,
+          issue: issue
+        })
+      });
+
+      const data = await response.json();
+      if (data.success) {
+        alert(`✅ Issue posted successfully!\n\nGitHub Issue: ${data.githubUrl}`);
+        setShowIssueModal(false);
+        setEditingIssue(null);
+      } else {
+        alert(`❌ Error: ${data.message}`);
+      }
+    } catch (error) {
+      console.error('Error posting issue:', error);
+      alert('Failed to post issue');
+    }
+  };
 
   const getSeverityColor = (severity: string) => {
     switch (severity) {
-      case 'critical': return 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
-      case 'high': return 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200'
-      case 'medium': return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200'
-      case 'low': return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
-      default: return 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200'
+      case 'critical': return 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200';
+      case 'high': return 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200';
+      case 'medium': return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200';
+      case 'low': return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200';
+      default: return 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200';
     }
-  }
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'approved': return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
-      case 'rejected': return 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
-      case 'pending': return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200'
-      case 'duplicate': return 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200'
-      default: return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200'
-    }
-  }
+  };
 
   if (loading) {
     return (
-      <div className="px-4 sm:px-6 lg:px-8 py-8 w-full max-w-[96rem] mx-auto">
+      <div className="px-4 sm:px-6 lg:px-8 py-8 w-full max-w-4xl mx-auto">
         <div className="flex items-center justify-center min-h-[400px]">
           <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600 mx-auto mb-4"></div>
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto mb-4"></div>
             <p className="text-gray-500 dark:text-gray-400">Loading repository data...</p>
           </div>
         </div>
       </div>
-    )
+    );
   }
 
   if (error || !repo) {
-    const isCollaboratorError = error?.includes('not the owner of this repository')
+    const isCollaboratorError = error?.includes('not the owner of this repository');
     
     return (
-      <div className="px-4 sm:px-6 lg:px-8 py-8 w-full max-w-[96rem] mx-auto">
+      <div className="px-4 sm:px-6 lg:px-8 py-8 w-full max-w-4xl mx-auto">
         <div className="flex items-center justify-center min-h-[400px]">
-        <div className="text-center">
-          <div className="text-red-500 mb-4 text-4xl">
-{isCollaboratorError ? <Users className="w-12 h-12 mx-auto" /> : <AlertTriangle className="w-12 h-12 mx-auto" />}
-          </div>
+          <div className="text-center">
+            <div className="text-red-500 mb-4 text-4xl">
+              {isCollaboratorError ? '👥' : '⚠️'}
+            </div>
             <h2 className="text-xl font-semibold text-gray-800 dark:text-gray-100 mb-2">
               {isCollaboratorError ? 'Not Repository Owner' : 'Repository Not Found'}
             </h2>
@@ -282,166 +321,146 @@ export default function RepoScraperPage() {
             </p>
             <button
               onClick={() => router.back()}
-              className="inline-flex items-center gap-2 bg-purple-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-purple-700 transition-colors"
+              className="inline-flex items-center gap-2 bg-indigo-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-indigo-700 transition-colors"
             >
               ← Go Back
             </button>
           </div>
         </div>
       </div>
-    )
+    );
   }
 
-  if (status === 'unauthenticated') {
+  if (!session) {
     return (
-      <div className="px-4 sm:px-6 lg:px-8 py-8 w-full max-w-[96rem] mx-auto">
-        <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-6">
-          <div className="flex items-center">
-            <svg className="w-5 h-5 text-red-400 mr-3" fill="currentColor" viewBox="0 0 20 20">
-              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
-            </svg>
-            <div>
-              <h3 className="text-sm font-medium text-red-800 dark:text-red-200">Authentication Required</h3>
-              <p className="text-sm text-red-700 dark:text-red-300 mt-1">Please sign in to use the AI Scraper feature.</p>
-            </div>
+      <div className="px-4 sm:px-6 lg:px-8 py-8 w-full max-w-4xl mx-auto">
+        <div className="bg-white dark:bg-gray-800 shadow-lg rounded-lg p-6">
+          <div className="text-center">
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">
+              Simple Repository Analyzer
+            </h1>
+            <p className="text-gray-600 dark:text-gray-300 mb-6">
+              Please sign in to analyze your repositories for bugs and complaints
+            </p>
+            <a
+              href="/api/auth/signin"
+              className="btn bg-indigo-500 hover:bg-indigo-600 text-white"
+            >
+              Sign In
+            </a>
           </div>
         </div>
       </div>
-    )
+    );
   }
 
   return (
-    <div className="px-4 sm:px-6 lg:px-8 py-8 w-full max-w-[96rem] mx-auto">
-      {/* Page header */}
-      <div className="sm:flex sm:justify-between sm:items-center mb-8">
-        {/* Left: Title with back button */}
-        <div className="mb-4 sm:mb-0">
-          <div className="flex items-center space-x-4 mb-2">
-            <button
-              onClick={() => router.back()}
-              className="inline-flex items-center gap-2 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 transition-colors"
-            >
-              ← Back
-            </button>
+    <div className="px-4 sm:px-6 lg:px-8 py-8">
+      <div className="max-w-6xl mx-auto">
+        
+        {/* Page header */}
+        <div className="sm:flex sm:justify-between sm:items-center mb-8">
+          {/* Left: Title with back button */}
+          <div className="mb-4 sm:mb-0">
+            <div className="flex items-center space-x-4 mb-2">
+              <button
+                onClick={() => router.back()}
+                className="inline-flex items-center gap-2 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 transition-colors"
+              >
+                ← Back
+              </button>
+            </div>
+            <h1 className="text-2xl md:text-3xl text-gray-800 dark:text-gray-100 font-bold">
+              🚀 Simple Repository Analyzer
+            </h1>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+              Fast web search analysis for <strong>{repo.name}</strong>
+            </p>
           </div>
-          <h1 className="text-2xl md:text-3xl text-gray-800 dark:text-gray-100 font-bold">
-            <Bot className="w-5 h-5 mr-2" /> AI Auto-Scraper
-          </h1>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-            Monitor and manage community issues for <strong>{repo.name}</strong>
-          </p>
-        </div>
 
-        {/* Right: Repository info */}
-        <div className="text-right">
-          <div className="text-sm text-gray-500 dark:text-gray-400">
-            {repo.open_issues_count} open issues
-          </div>
-          <div className="text-xs text-gray-400 dark:text-gray-500">
-            {repo.owner.login}/{repo.name}
-          </div>
-        </div>
-      </div>
-
-      {/* GitHub Connection Status */}
-      <div className="bg-white dark:bg-gray-800 shadow-sm rounded-xl p-6 mb-6">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center">
-            <div className={`w-3 h-3 rounded-full mr-3 ${
-              githubStatus === 'connected' ? 'bg-green-500' : 
-              githubStatus === 'checking' ? 'bg-yellow-500' : 'bg-red-500'
-            }`}></div>
-            <div>
-              <h3 className="text-lg font-medium text-gray-900 dark:text-white">
-                GitHub Connection
-              </h3>
-              <p className="text-sm text-gray-600 dark:text-gray-300">
-                {githubStatus === 'connected' ? 'Connected' : 
-                 githubStatus === 'checking' ? 'Checking...' : 'Disconnected'}
-              </p>
+          {/* Right: Repository info */}
+          <div className="text-right">
+            <div className="text-sm text-gray-500 dark:text-gray-400">
+              {repo.open_issues_count} open issues
+            </div>
+            <div className="text-xs text-gray-400 dark:text-gray-500">
+              {repo.owner.login}/{repo.name}
             </div>
           </div>
-          {githubStatus === 'disconnected' && (
-            <a
-              href="/api/auth/signin/github"
-              className="btn bg-gray-900 hover:bg-gray-800 text-white"
-            >
-              Connect GitHub
-            </a>
-          )}
         </div>
-      </div>
 
-      {/* Repository Actions */}
-      <div className="bg-white dark:bg-gray-800 shadow-sm rounded-xl p-6 mb-6">
-        <div className="flex items-center justify-between mb-4">
-          <div>
-            <h3 className="text-lg font-medium text-gray-900 dark:text-white">
-              Repository Actions
-            </h3>
-            <p className="text-sm text-gray-600 dark:text-gray-300">
-              Selected: <span className="font-medium">{repo.full_name}</span>
-            </p>
+        {/* GitHub Connection Status */}
+        <div className="bg-white dark:bg-gray-800 shadow rounded-lg p-6 mb-6">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center">
+              <div className={`w-3 h-3 rounded-full mr-3 ${
+                githubStatus === 'connected' ? 'bg-green-500' : 
+                githubStatus === 'checking' ? 'bg-yellow-500' : 'bg-red-500'
+              }`}></div>
+              <div>
+                <h3 className="text-lg font-medium text-gray-900 dark:text-white">
+                  GitHub Connection
+                </h3>
+                <p className="text-sm text-gray-600 dark:text-gray-300">
+                  {githubStatus === 'connected' ? 'Connected' : 
+                   githubStatus === 'checking' ? 'Checking...' : 'Disconnected'}
+                </p>
+              </div>
+            </div>
+            {githubStatus === 'disconnected' && (
+              <a
+                href="/api/auth/signin/github"
+                className="btn bg-gray-900 hover:bg-gray-800 text-white"
+              >
+                Connect GitHub
+              </a>
+            )}
           </div>
         </div>
-        
-        <div className="flex flex-wrap gap-3">
-          <button
-            onClick={() => scrapeForRepository(['reddit'])}
-            disabled={scrapingInProgress}
-            className="btn bg-orange-500 hover:bg-orange-600 text-white disabled:opacity-50"
-          >
-            {scrapingInProgress ? '⏳' : '🔴'} Scrape Reddit
-          </button>
-          <button
-            onClick={() => scrapeForRepository(['stackoverflow'])}
-            disabled={scrapingInProgress}
-            className="btn bg-orange-600 hover:bg-orange-700 text-white disabled:opacity-50"
-          >
-            {scrapingInProgress ? '⏳' : '📚'} Scrape Stack Overflow
-          </button>
-          <button
-            onClick={() => scrapeForRepository(['reddit', 'stackoverflow'])}
-            disabled={scrapingInProgress}
-            className="btn bg-purple-500 hover:bg-purple-600 text-white disabled:opacity-50"
-          >
-            {scrapingInProgress ? '⏳ Scraping...' : '🚀 Scrape All Sources'}
-          </button>
-          <button
-            onClick={syncToGitHub}
-            className="btn bg-green-500 hover:bg-green-600 text-white"
-          >
-            📤 Sync to GitHub
-          </button>
-        </div>
-        
-        {scrapingInProgress && (
-          <div className="mt-4 p-3 bg-yellow-50 dark:bg-yellow-900/20 rounded border border-yellow-200 dark:border-yellow-800">
-            <p className="text-sm text-yellow-800 dark:text-yellow-200">
-              ⏳ Scraping in progress... This may take a few minutes. Please don't close this page.
-            </p>
+
+        {/* Repository Confirmation */}
+        {githubStatus === 'connected' && selectedRepo && (
+          <div className="bg-white dark:bg-gray-800 shadow rounded-lg p-6 mb-6">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center">
+                <div className="w-3 h-3 rounded-full mr-3 bg-green-500"></div>
+                <div>
+                  <h3 className="text-lg font-medium text-gray-900 dark:text-white">
+                    Repository Selected
+                  </h3>
+                  <p className="text-sm text-gray-600 dark:text-gray-300">
+                    Analyzing: <strong>{selectedRepo}</strong>
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center text-sm text-gray-500 dark:text-gray-400">
+                <span className="mr-4">⭐ {repo.stargazers_count}</span>
+                <span className="mr-4">🔧 {repo.language || 'N/A'}</span>
+                <span>{repo.private ? 'Private' : 'Public'}</span>
+              </div>
+            </div>
           </div>
         )}
 
-        {/* AI-Generated Keywords */}
-        {repoKeywords && (
-          <div className="mt-6 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
-            <div className="flex items-center mb-3">
-              <span className="text-lg mr-2">🤖</span>
-              <h4 className="font-medium text-gray-900 dark:text-white">
+        {/* AI Keywords Display */}
+        {selectedRepo && aiKeywords && (
+          <div className="bg-white dark:bg-gray-800 shadow rounded-lg p-6 mb-6">
+            <div className="flex items-center mb-4">
+              <span className="text-2xl mr-3">🤖</span>
+              <h3 className="text-lg font-medium text-gray-900 dark:text-white">
                 AI-Generated Search Keywords
-              </h4>
-              <span className="ml-2 px-2 py-1 text-xs bg-blue-100 text-blue-800 dark:bg-blue-800 dark:text-blue-200 rounded-full">
-                {Math.round(repoKeywords.confidence * 100)}% confidence
+              </h3>
+              <span className="ml-3 px-3 py-1 text-sm bg-blue-100 text-blue-800 dark:bg-blue-800 dark:text-blue-200 rounded-full">
+                {Math.round(aiKeywords.confidence * 100)}% confidence
               </span>
             </div>
             
-            <p className="text-sm text-gray-600 dark:text-gray-300 mb-3">
-              <strong>Reasoning:</strong> {repoKeywords.reasoning}
+            <p className="text-sm text-gray-600 dark:text-gray-300 mb-4">
+              <strong>AI Reasoning:</strong> {aiKeywords.reasoning}
             </p>
             
-            <div className="flex flex-wrap gap-2">
-              {repoKeywords.keywords.slice(0, 10).map((keyword, index) => (
+            <div className="flex flex-wrap gap-2 mb-4">
+              {aiKeywords.keywords.slice(0, 15).map((keyword, index) => (
                 <span
                   key={index}
                   className="px-3 py-1 text-sm bg-blue-100 text-blue-800 dark:bg-blue-800 dark:text-blue-200 rounded-full"
@@ -449,145 +468,282 @@ export default function RepoScraperPage() {
                   {keyword}
                 </span>
               ))}
-              {repoKeywords.keywords.length > 10 && (
+              {aiKeywords.keywords.length > 15 && (
                 <span className="px-3 py-1 text-sm bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400 rounded-full">
-                  +{repoKeywords.keywords.length - 10} more
+                  +{aiKeywords.keywords.length - 15} more
                 </span>
               )}
             </div>
+
+            <button
+              onClick={analyzeRepository}
+              disabled={scrapingInProgress}
+              className="btn bg-indigo-500 hover:bg-indigo-600 text-white disabled:opacity-50"
+            >
+              {scrapingInProgress ? '⚡ Fast Analysis...' : '⚡ Fast Web Search'}
+            </button>
           </div>
         )}
-      </div>
 
-      {/* Filters */}
-      <div className="bg-white dark:bg-gray-800 shadow-sm rounded-xl p-6 mb-6">
-        <div className="flex flex-wrap gap-4">
-          <select
-            value={filter}
-            onChange={(e) => setFilter(e.target.value as any)}
-            className="form-input"
-          >
-            <option value="all">All</option>
-            <option value="pending">Pending</option>
-            <option value="processed">Processed</option>
-            <option value="duplicates">Duplicates</option>
-          </select>
-
-          <select
-            value={source}
-            onChange={(e) => setSource(e.target.value as any)}
-            className="form-input"
-          >
-            <option value="all">All Sources</option>
-            <option value="reddit">Reddit</option>
-            <option value="stackoverflow">Stack Overflow</option>
-          </select>
-        </div>
-      </div>
-
-      {/* Posts List */}
-      <div className="bg-white dark:bg-gray-800 shadow-sm rounded-xl">
-        <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
-          <h3 className="text-lg font-medium text-gray-900 dark:text-white">
-            Community Issues ({posts.length})
-          </h3>
-        </div>
-        
-        {posts.length === 0 ? (
-          <div className="p-6 text-center">
-            <p className="text-gray-600 dark:text-gray-300">
-              No issues found. Try scraping for your selected repository.
-            </p>
-          </div>
-        ) : (
-          <div className="divide-y divide-gray-200 dark:divide-gray-700">
-            {posts.map((post) => (
-              <div key={post.id} className="p-6">
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <div className="flex items-center space-x-2 mb-2">
-                      <span className={`px-2 py-1 text-xs font-medium rounded-full ${getSeverityColor(post.processedIssue?.severity || 'medium')}`}>
-                        {post.processedIssue?.severity || 'medium'}
-                      </span>
-                      <span className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(post.processedIssue?.status || 'pending')}`}>
-                        {post.processedIssue?.status || 'pending'}
-                      </span>
-                      <a 
-                        href={post.sourceUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="px-2 py-1 text-xs font-medium rounded-full bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200 hover:bg-blue-200 dark:hover:bg-blue-800 transition-colors"
-                      >
-                        {post.source} 🔗
-                      </a>
-                      {post.processedIssue?.confidence && (
-                        <span className="text-xs text-gray-500 dark:text-gray-400">
-                          {Math.round(post.processedIssue.confidence * 100)}% confidence
-                        </span>
-                      )}
-                    </div>
-                    
-                    <h4 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
-                      <a 
-                        href={post.sourceUrl} 
-                        target="_blank" 
-                        rel="noopener noreferrer"
-                        className="hover:text-blue-600 dark:hover:text-blue-400 transition-colors flex items-center gap-2"
-                      >
-                        {post.title}
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                        </svg>
-                      </a>
-                    </h4>
-                    
-                    {post.processedIssue?.summary && (
-                      <p className="text-gray-600 dark:text-gray-300 mb-3">
-                        {post.processedIssue.summary}
-                      </p>
-                    )}
-                    
-                    <div className="flex items-center space-x-4 text-sm text-gray-500 dark:text-gray-400">
-                      <span>👤 {post.author}</span>
-                      <span>👍 {post.upvotes}</span>
-                      <span>💬 {post.commentCount}</span>
-                      <span>📅 {new Date(post.postedAt).toLocaleDateString()}</span>
-                    </div>
-                    
-                    {post.processedIssue?.suggestedLabels && post.processedIssue.suggestedLabels.length > 0 && (
-                      <div className="mt-3 flex flex-wrap gap-1">
-                        {post.processedIssue.suggestedLabels.map((label, index) => (
-                          <span
-                            key={index}
-                            className="px-2 py-1 text-xs bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300 rounded"
-                          >
-                            {label}
-                          </span>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                  
-                  <div className="ml-4 flex flex-col space-y-2">
-                    <button
-                      onClick={() => updateIssueStatus(post.processedIssue?.id || '', 'approved')}
-                      className="btn-sm bg-green-500 hover:bg-green-600 text-white"
-                    >
-                      Approve
-                    </button>
-                    <button
-                      onClick={() => updateIssueStatus(post.processedIssue?.id || '', 'rejected')}
-                      className="btn-sm bg-red-500 hover:bg-red-600 text-white"
-                    >
-                      Reject
-                    </button>
+        {/* Scraping Progress */}
+        {scrapingInProgress && (
+          <div className="bg-white dark:bg-gray-800 shadow rounded-lg p-6 mb-6">
+            <div className="flex items-center">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-500 mr-4"></div>
+              <div>
+                <h3 className="text-lg font-medium text-gray-900 dark:text-white">
+                  Analyzing Repository
+                </h3>
+                <p className="text-sm text-gray-600 dark:text-gray-300">
+                  {scrapingProgress}
+                </p>
+                <div className="mt-2">
+                  <div className="w-full bg-gray-200 rounded-full h-2 dark:bg-gray-700">
+                    <div className="bg-indigo-600 h-2 rounded-full animate-pulse" style={{width: '60%'}}></div>
                   </div>
                 </div>
               </div>
-            ))}
+            </div>
           </div>
+        )}
+
+        {/* Results */}
+        {results.length > 0 && (
+          <div className="bg-white dark:bg-gray-800 shadow rounded-lg">
+            <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-medium text-gray-900 dark:text-white">
+                  Analysis Results
+                </h3>
+                {scrapingStats && (
+                  <div className="flex space-x-4 text-sm text-gray-600 dark:text-gray-300">
+                    <span>Total: {scrapingStats.total}</span>
+                    <span>Bugs: {scrapingStats.bugs}</span>
+                    <span>Complaints: {scrapingStats.complaints}</span>
+                  </div>
+                )}
+              </div>
+            </div>
+            
+            <div className="divide-y divide-gray-200 dark:divide-gray-700">
+              {results.map((result) => (
+                <div key={result.id} className="p-6">
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      <div className="flex items-center space-x-2 mb-2">
+                        <span className={`px-2 py-1 text-xs font-medium rounded-full ${getSeverityColor(result.severity)}`}>
+                          {result.severity}
+                        </span>
+                        <span className="px-2 py-1 text-xs font-medium rounded-full bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
+                          {result.source}
+                        </span>
+                        <span className="text-xs text-gray-500 dark:text-gray-400">
+                          {Math.round(result.confidence * 100)}% confidence
+                        </span>
+                      </div>
+                      
+                      <h4 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
+                        <a 
+                          href={result.sourceUrl} 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          className="hover:text-blue-600 dark:hover:text-blue-400 transition-colors flex items-center gap-2"
+                        >
+                          {result.title}
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                          </svg>
+                        </a>
+                      </h4>
+                      
+                      <p className="text-gray-600 dark:text-gray-300 mb-3">
+                        {result.summary}
+                      </p>
+                      
+                      <div className="flex items-center space-x-4 text-sm text-gray-500 dark:text-gray-400 mb-3">
+                        <span>👤 {result.author}</span>
+                        <span>👍 {result.upvotes}</span>
+                        <span>💬 {result.commentCount}</span>
+                        <span>📅 {new Date(result.postedAt).toLocaleDateString()}</span>
+                      </div>
+                      
+                      {result.suggestedLabels && result.suggestedLabels.length > 0 && (
+                        <div className="flex flex-wrap gap-1 mb-3">
+                          {result.suggestedLabels.map((label, index) => (
+                            <span
+                              key={index}
+                              className="px-2 py-1 text-xs bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300 rounded"
+                            >
+                              {label}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                    
+                    <div className="ml-4">
+                      <button
+                        onClick={() => generateIssue(result)}
+                        className="btn bg-green-500 hover:bg-green-600 text-white"
+                      >
+                        📝 Create Issue
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Issue Editor Modal */}
+        {showIssueModal && editingIssue && (
+          <ModalBasic
+            title="Edit Generated Issue"
+            isOpen={showIssueModal}
+            setIsOpen={() => setShowIssueModal(false)}
+          >
+            <IssueEditor
+              issue={editingIssue}
+              onSave={(updatedIssue) => {
+                postIssue(updatedIssue);
+              }}
+              onCancel={() => {
+                setShowIssueModal(false);
+                setEditingIssue(null);
+              }}
+            />
+          </ModalBasic>
         )}
       </div>
     </div>
-  )
+  );
+}
+
+// Issue Editor Component
+function IssueEditor({ 
+  issue, 
+  onSave, 
+  onCancel 
+}: { 
+  issue: GeneratedIssue; 
+  onSave: (issue: GeneratedIssue) => void; 
+  onCancel: () => void; 
+}) {
+  const [editedIssue, setEditedIssue] = useState<GeneratedIssue>(issue);
+  const [saving, setSaving] = useState(false);
+
+  const handleSave = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSaving(true);
+    
+    try {
+      onSave(editedIssue);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <form onSubmit={handleSave} className="space-y-4">
+      <div>
+        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+          Issue Title
+        </label>
+        <input
+          type="text"
+          value={editedIssue.title}
+          onChange={(e) => setEditedIssue({ ...editedIssue, title: e.target.value })}
+          className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-transparent dark:bg-gray-700 dark:text-gray-200"
+          required
+        />
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+          Issue Description
+        </label>
+        <textarea
+          value={editedIssue.body}
+          onChange={(e) => setEditedIssue({ ...editedIssue, body: e.target.value })}
+          className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-transparent dark:bg-gray-700 dark:text-gray-200"
+          rows={8}
+          required
+        />
+      </div>
+
+      <div className="grid grid-cols-2 gap-4">
+        <div>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+            Severity
+          </label>
+          <select
+            value={editedIssue.severity}
+            onChange={(e) => setEditedIssue({ ...editedIssue, severity: e.target.value })}
+            className="w-full p-2 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-transparent dark:bg-gray-700 dark:text-gray-200"
+          >
+            <option value="critical">Critical</option>
+            <option value="high">High</option>
+            <option value="medium">Medium</option>
+            <option value="low">Low</option>
+          </select>
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+            Type
+          </label>
+          <select
+            value={editedIssue.type}
+            onChange={(e) => setEditedIssue({ ...editedIssue, type: e.target.value })}
+            className="w-full p-2 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-transparent dark:bg-gray-700 dark:text-gray-200"
+          >
+            <option value="bug">Bug</option>
+            <option value="feature_request">Feature Request</option>
+            <option value="question">Question</option>
+          </select>
+        </div>
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+          Labels (comma-separated)
+        </label>
+        <input
+          type="text"
+          value={editedIssue.labels.join(', ')}
+          onChange={(e) => setEditedIssue({ ...editedIssue, labels: e.target.value.split(',').map(l => l.trim()).filter(l => l) })}
+          className="w-full p-2 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-transparent dark:bg-gray-700 dark:text-gray-200"
+          placeholder="e.g., bug, ui, priority-high"
+        />
+      </div>
+
+      <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg">
+        <h4 className="font-medium text-gray-900 dark:text-white mb-2">Source Information</h4>
+        <p className="text-sm text-gray-600 dark:text-gray-300 mb-2">
+          <strong>Original Post:</strong> <a href={editedIssue.sourceUrl} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-800">View Source</a>
+        </p>
+        <p className="text-sm text-gray-600 dark:text-gray-300">
+          <strong>Source Content:</strong> {editedIssue.sourcePost.substring(0, 200)}...
+        </p>
+      </div>
+
+      <div className="flex justify-end space-x-3 pt-4">
+        <button
+          type="button"
+          onClick={onCancel}
+          className="btn bg-gray-500 hover:bg-gray-600 text-white"
+        >
+          Cancel
+        </button>
+        <button
+          type="submit"
+          disabled={saving}
+          className="btn bg-indigo-500 hover:bg-indigo-600 text-white disabled:opacity-50"
+        >
+          {saving ? 'Posting...' : 'Post to GitHub'}
+        </button>
+      </div>
+    </form>
+  );
 }

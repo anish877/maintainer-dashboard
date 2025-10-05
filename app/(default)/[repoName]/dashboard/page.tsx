@@ -358,6 +358,57 @@ export default function RepoDashboard() {
                   </div>
                 </div>
               </button>
+              
+              <button
+                onClick={() => router.push(`/${repoName}/scraper`)}
+                className="flex items-center gap-4 p-4 rounded-lg bg-indigo-50 dark:bg-indigo-900/20 hover:bg-indigo-100 dark:hover:bg-indigo-900/30 transition-colors text-left border border-indigo-200 dark:border-indigo-800"
+              >
+                <div className="flex-shrink-0">
+                  <Search className="w-8 h-8 text-indigo-600" />
+                </div>
+                <div>
+                  <div className="text-sm font-semibold text-indigo-800 dark:text-indigo-200">
+                    Simple Scraper
+                  </div>
+                  <div className="text-xs text-indigo-600 dark:text-indigo-400 mt-1">
+                    Fast web search and issue generation
+                  </div>
+                </div>
+              </button>
+              
+              <button
+                onClick={() => router.push(`/${repoName}/completeness`)}
+                className="flex items-center gap-4 p-4 rounded-lg bg-emerald-50 dark:bg-emerald-900/20 hover:bg-emerald-100 dark:hover:bg-emerald-900/30 transition-colors text-left border border-emerald-200 dark:border-emerald-800"
+              >
+                <div className="flex-shrink-0">
+                  <BarChart3 className="w-8 h-8 text-emerald-600" />
+                </div>
+                <div>
+                  <div className="text-sm font-semibold text-emerald-800 dark:text-emerald-200">
+                    Issue Completeness
+                  </div>
+                  <div className="text-xs text-emerald-600 dark:text-emerald-400 mt-1">
+                    Analyze and improve issue quality
+                  </div>
+                </div>
+              </button>
+              
+              <button
+                onClick={() => router.push(`/${repoName}/contributor-analytics`)}
+                className="flex items-center gap-4 p-4 rounded-lg bg-teal-50 dark:bg-teal-900/20 hover:bg-teal-100 dark:hover:bg-teal-900/30 transition-colors text-left border border-teal-200 dark:border-teal-800"
+              >
+                <div className="flex-shrink-0">
+                  <Users className="w-8 h-8 text-teal-600" />
+                </div>
+                <div>
+                  <div className="text-sm font-semibold text-teal-800 dark:text-teal-200">
+                    Contributor Analytics
+                  </div>
+                  <div className="text-xs text-teal-600 dark:text-teal-400 mt-1">
+                    Track contributor health and metrics
+                  </div>
+                </div>
+              </button>
             </div>
           </div>
 
