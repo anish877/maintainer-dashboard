@@ -82,7 +82,7 @@ export class AssignmentService {
     assigneeId: string
   }) {
     try {
-      console.log(`🚫 Unassigning user from issue #${data.issueNumber}`)
+      console.log(`Unassigning user from issue #${data.issueNumber}`)
       
       // Simulate unassignment without database
       const unassignment = {

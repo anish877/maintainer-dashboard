@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { useSession } from 'next-auth/react'
 import { useGitHubRepos } from '@/hooks/use-github-repos'
 import { useToastNotifications } from '@/lib/toast'
+import { Users, AlertTriangle, Bot, Rocket, X } from 'lucide-react'
 
 export default function TriagePage() {
   const { data: session, status } = useSession()
@@ -128,7 +129,7 @@ export default function TriagePage() {
         }
       }
       
-      showError(`❌ Failed to apply labels: ${errorMessage}`)
+      showError(`Failed to apply labels: ${errorMessage}`)
     } finally {
       setApplyingLabels(prev => {
         const newSet = new Set(prev)
@@ -171,7 +172,7 @@ export default function TriagePage() {
         {/* Left: Title */}
         <div className="mb-4 sm:mb-0">
           <h1 className="text-2xl md:text-3xl text-gray-800 dark:text-gray-100 font-bold">
-            🤖 AI Issue Triage
+            <Bot className="w-5 h-5 mr-2 inline" /> AI Issue Triage
           </h1>
           {session?.user && (
             <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
@@ -310,7 +311,7 @@ export default function TriagePage() {
               >
                 {isLoading ? (
                   <>
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                    <div className="h-4 w-16 bg-white/20 rounded mr-2 animate-pulse"></div>
                     Triaging...
                   </>
                 ) : (
@@ -318,7 +319,7 @@ export default function TriagePage() {
                     <svg className="fill-current shrink-0 mr-2" width="16" height="16" viewBox="0 0 16 16">
                       <path d="M8 0C3.58 0 0 3.58 0 8s3.58 8 8 8 8-3.58 8-8-3.58-8-8-8zm0 14c-3.31 0-6-2.69-6-6s2.69-6 6-6 6 2.69 6 6-2.69 6-6 6zm-1-9h2v2H7V5zm0 3h2v4H7V8z"/>
                     </svg>
-                    🚀 Start AI Triage
+                    <Rocket className="w-4 h-4 mr-2" /> Start AI Triage
                   </>
                 )}
               </button>

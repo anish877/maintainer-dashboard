@@ -2,6 +2,8 @@
 
 import EditMenu from '@/components/edit-menu'
 import { useAnalytics } from '@/hooks/use-analytics-context'
+import { useGitHubAnalytics } from '@/hooks/use-github-analytics'
+import { Folder, Star, GitFork, Bug } from 'lucide-react'
 
 export default function DashboardCard05() {
   const { stats, loading } = useAnalytics()
@@ -30,26 +32,26 @@ export default function DashboardCard05() {
     {
       label: 'Total Repositories',
       value: stats?.totalRepos || 0,
-      icon: '📁',
+      icon: Folder,
       color: 'text-blue-600'
     },
     {
       label: 'Total Stars',
       value: stats?.totalStars?.toLocaleString() || '0',
-      icon: '⭐',
+      icon: Star,
       color: 'text-yellow-600'
     },
     {
       label: 'Total Forks',
       value: stats?.totalForks?.toLocaleString() || '0',
-      icon: '🍴',
+      icon: GitFork,
       color: 'text-green-600'
     },
     {
-      label: 'Total Commits',
-      value: stats?.totalCommits?.toLocaleString() || '0',
-      icon: '💾',
-      color: 'text-purple-600'
+      label: 'Open Issues',
+      value: stats?.totalIssues?.toLocaleString() || '0',
+      icon: Bug,
+      color: 'text-red-600'
     }
   ]
 
@@ -62,17 +64,20 @@ export default function DashboardCard05() {
           <EditMenu align="right" />
         </header>
         <div className="space-y-4">
-          {statsData.map((stat, index) => (
-            <div key={index} className="flex items-center justify-between">
-              <div className="flex items-center">
-                <span className="text-2xl mr-3">{stat.icon}</span>
-                <span className="text-sm font-medium text-gray-600 dark:text-gray-400">{stat.label}</span>
+          {statsData.map((stat, index) => {
+            const IconComponent = stat.icon
+            return (
+              <div key={index} className="flex items-center justify-between">
+                <div className="flex items-center">
+                  <IconComponent className={`w-5 h-5 mr-3 ${stat.color}`} />
+                  <span className="text-sm font-medium text-gray-600 dark:text-gray-400">{stat.label}</span>
+                </div>
+                <div className={`text-lg font-bold ${stat.color}`}>
+                  {stat.value}
+                </div>
               </div>
-              <div className={`text-lg font-bold ${stat.color}`}>
-                {stat.value}
-              </div>
-            </div>
-          ))}
+            )
+          })}
         </div>
       </div>
     </div>

@@ -2,8 +2,7 @@
 
 import { useSession } from 'next-auth/react'
 import { useState } from 'react'
-import FilterButton from '@/components/dropdown-filter'
-import Datepicker from '@/components/datepicker'
+import { Hand } from 'lucide-react'
 import DashboardCard01 from './dashboard-card-01'
 import DashboardCard02 from './dashboard-card-02'
 import DashboardCard03 from './dashboard-card-03'
@@ -11,10 +10,6 @@ import DashboardCard04 from './dashboard-card-04'
 import DashboardCard05 from './dashboard-card-05'
 import DashboardCard06 from './dashboard-card-06'
 import DashboardCard07 from './dashboard-card-07'
-import DashboardCard08 from './dashboard-card-08'
-import DashboardCard09 from './dashboard-card-09'
-import DashboardCard10 from './dashboard-card-10'
-import DashboardCard11 from './dashboard-card-11'
 import { AnalyticsProvider } from '@/hooks/use-analytics-context'
 
 export default function Dashboard() {
@@ -37,7 +32,7 @@ export default function Dashboard() {
           </h1>
           {session?.user && (
             <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-              Welcome back, {session.user.name || session.user.username || session.user.email}! 👋
+              Welcome back, {session.user.name || session.user.username || session.user.email}! <Hand className="w-4 h-4 inline ml-1" />
               {session.user.username && (
                 <span className="ml-2 text-xs bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded-full">
                   @{session.user.username}
@@ -59,25 +54,12 @@ export default function Dashboard() {
             </svg>
             <span className="max-xs:sr-only">Refresh</span>
           </button>
-          {/* Filter button */}        
-          <FilterButton align="right" />
-          {/* Datepicker built with React Day Picker */}
-          <Datepicker />
-          {/* Add view button */}
-          <button className="btn bg-gray-900 text-gray-100 hover:bg-gray-800 dark:bg-gray-100 dark:text-gray-800 dark:hover:bg-white">
-            <svg className="fill-current shrink-0 xs:hidden" width="16" height="16" viewBox="0 0 16 16">
-              <path d="M15 7H9V1c0-.6-.4-1-1-1S7 .4 7 1v6H1c-.6 0-1 .4-1 1s.4 1 1 1h6v6c0 .6.4 1 1 1s1-.4 1-1V9h6c.6 0 1-.4 1-1s-.4-1-1-1z" />
-            </svg>
-            <span className="max-xs:sr-only">Add View</span>
-          </button>              
         </div>
       </div>
 
       {/* Cards */}
       <div key={refreshKey} className="grid grid-cols-12 gap-6">
 
-        {/* GitHub Commits Activity */}
-        <DashboardCard01 />
         {/* GitHub Repositories */}
         <DashboardCard02 />
         {/* GitHub Stars */}
@@ -88,16 +70,8 @@ export default function Dashboard() {
         <DashboardCard05 />
         {/* Programming Languages Distribution */}
         <DashboardCard06 />
-        {/* Recent Activity Table */}
+        {/* AI Assistant Chat */}
         <DashboardCard07 />
-        {/* Line chart (Sales Over Time) */}
-        <DashboardCard08 />
-        {/* Stacked bar chart (Sales VS Refunds) */}
-        <DashboardCard09 />
-        {/* Card (Recent Activity) */}
-        <DashboardCard10 />
-        {/* Card (Income/Expenses) */}
-        <DashboardCard11 />        
 
       </div>
       </div>

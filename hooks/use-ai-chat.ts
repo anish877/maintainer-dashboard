@@ -9,6 +9,7 @@ interface UseAIChatOptions {
   onMessage?: (message: AIMessage) => void
   onResponse?: (response: string) => void
   onError?: (error: Error) => void
+  onRouting?: (routing: { suggested: string | null, confidence: number }) => void
 }
 
 interface UseAIChatReturn {
@@ -25,7 +26,8 @@ export function useAIChat({
   streaming = true,
   onMessage,
   onResponse,
-  onError
+  onError,
+  onRouting
 }: UseAIChatOptions = {}): UseAIChatReturn {
   const [messages, setMessages] = useState<AIMessage[]>([])
   const [isLoading, setIsLoading] = useState(false)
@@ -73,6 +75,21 @@ export function useAIChat({
           throw new Error('Failed to get response')
         }
 
+        // Check if response is restricted
+        const contentType = response.headers.get('content-type')
+        if (contentType?.includes('application/json')) {
+          const data = await response.json()
+          if (data.restricted) {
+            const assistantMessage: AIMessage = {
+              role: 'assistant',
+              content: data.error
+            }
+            setMessages([...newMessages, assistantMessage])
+            setIsLoading(false)
+            return
+          }
+        }
+
         const reader = response.body?.getReader()
         const decoder = new TextDecoder()
         let fullResponse = ''
@@ -94,6 +111,10 @@ export function useAIChat({
                     setCurrentResponse(fullResponse)
                   }
                   if (data.done) {
+                    // Handle routing information if present
+                    if (data.routing) {
+                      onRouting?.(data.routing)
+                    }
                     break
                   }
                 } catch (e) {
@@ -134,6 +155,18 @@ export function useAIChat({
         }
 
         const data = await response.json()
+        
+        // Handle restricted responses
+        if (data.restricted) {
+          const assistantMessage: AIMessage = {
+            role: 'assistant',
+            content: data.error
+          }
+          setMessages([...newMessages, assistantMessage])
+          setIsLoading(false)
+          return
+        }
+
         const assistantMessage: AIMessage = {
           role: 'assistant',
           content: data.response
@@ -141,6 +174,11 @@ export function useAIChat({
 
         setMessages([...newMessages, assistantMessage])
         onResponse?.(data.response)
+        
+        // Handle routing information if present
+        if (data.routing) {
+          onRouting?.(data.routing)
+        }
       }
     } catch (error) {
       if (error instanceof Error && error.name === 'AbortError') {

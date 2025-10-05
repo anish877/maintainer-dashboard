@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import { useToastNotifications } from '@/lib/toast'
+import { Users, AlertTriangle, Bot, Rocket, X } from 'lucide-react'
 
 export default function RepoTriagePage() {
   const params = useParams()
@@ -37,7 +38,13 @@ export default function RepoTriagePage() {
       const response = await fetch(`/api/github/repos/${repoName}`)
       
       if (!response.ok) {
-        throw new Error('Failed to fetch repository data')
+        const errorData = await response.json()
+        if (response.status === 403 && errorData.isCollaborator) {
+          // User is a collaborator but not the owner
+          setError('You are not the owner of this repository. You may be a collaborator.')
+          return
+        }
+        throw new Error(errorData.error || 'Failed to fetch repository data')
       }
       
       const data = await response.json()
@@ -143,7 +150,7 @@ export default function RepoTriagePage() {
         }
       }
       
-      showError(`❌ Failed to apply labels: ${errorMessage}`)
+      showError(`Failed to apply labels: ${errorMessage}`)
     } finally {
       setApplyingLabels(prev => {
         const newSet = new Set(prev)
@@ -167,18 +174,23 @@ export default function RepoTriagePage() {
   }
 
   if (error || !repo) {
+    const isCollaboratorError = error?.includes('not the owner of this repository')
+    
     return (
       <div className="px-4 sm:px-6 lg:px-8 py-8 w-full max-w-[96rem] mx-auto">
         <div className="flex items-center justify-center min-h-[400px]">
         <div className="text-center">
           <div className="text-red-500 mb-4 text-4xl">
-            ⚠️
+{isCollaboratorError ? <Users className="w-12 h-12 mx-auto" /> : <AlertTriangle className="w-12 h-12 mx-auto" />}
           </div>
             <h2 className="text-xl font-semibold text-gray-800 dark:text-gray-100 mb-2">
-              Repository Not Found
+              {isCollaboratorError ? 'Not Repository Owner' : 'Repository Not Found'}
             </h2>
             <p className="text-gray-500 dark:text-gray-400 mb-4">
-              {error || 'The requested repository could not be found.'}
+              {isCollaboratorError
+                ? 'You appear to be a collaborator on this repository, but you are not the owner. Some features may be limited.'
+                : error || 'The requested repository could not be found.'
+              }
             </p>
             <button
               onClick={() => router.back()}
@@ -225,7 +237,7 @@ export default function RepoTriagePage() {
             </button>
           </div>
           <h1 className="text-2xl md:text-3xl text-gray-800 dark:text-gray-100 font-bold">
-            🤖 AI Issue Triage
+            <Bot className="w-5 h-5 mr-2" /> AI Issue Triage
           </h1>
           <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
             Automatically analyze and categorize issues in <strong>{repo.name}</strong>
@@ -280,7 +292,7 @@ export default function RepoTriagePage() {
               >
                 {isAnalyzing ? (
                   <>
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                    <div className="h-4 w-4 bg-white/20 rounded mr-2 animate-pulse"></div>
                     Analyzing...
                   </>
                 ) : (
@@ -288,7 +300,7 @@ export default function RepoTriagePage() {
                     <svg className="fill-current shrink-0 mr-2" width="16" height="16" viewBox="0 0 16 16">
                       <path d="M8 0C3.58 0 0 3.58 0 8s3.58 8 8 8 8-3.58 8-8-3.58-8-8-8zm0 14c-3.31 0-6-2.69-6-6s2.69-6 6-6 6 2.69 6 6-2.69 6-6 6zm-1-9h2v2H7V5zm0 3h2v4H7V8z"/>
                     </svg>
-                    🚀 Start AI Triage
+                    <Rocket className="w-4 h-4 mr-2" /> Start AI Triage
                   </>
                 )}
               </button>
@@ -444,7 +456,7 @@ export default function RepoTriagePage() {
                       >
                         {applyingLabels.has(issue.issueNumber) ? (
                           <>
-                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                            <div className="h-4 w-4 bg-white/20 rounded mr-2 animate-pulse"></div>
                             Applying...
                           </>
                         ) : (
@@ -467,3 +479,5 @@ export default function RepoTriagePage() {
     </div>
   )
 }
+
+

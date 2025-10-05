@@ -11,7 +11,7 @@ import type { ChartData } from 'chart.js'
 import 'chartjs-adapter-moment'
 
 // Import utilities
-import { formatValue } from '@/components/utils/utils'
+import { formatThousands } from '@/components/utils/utils'
 
 Chart.register(LineController, LineElement, Filler, PointElement, LinearScale, TimeScale, Tooltip)
 
@@ -62,7 +62,7 @@ export default function LineChart01({
           tooltip: {
             callbacks: {
               title: () => '', // Disable tooltip title
-              label: (context) => formatValue(context.parsed.y),
+              label: (context) => formatThousands(context.parsed.y),
             },
             bodyColor: darkMode ? tooltipBodyColor.dark : tooltipBodyColor.light,
             backgroundColor: darkMode ? tooltipBgColor.dark : tooltipBgColor.light,

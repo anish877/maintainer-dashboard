@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useParams } from 'next/navigation'
 import ActivityChecker from '@/app/(default)/assignments/activity-checker'
+import { AlertTriangle, Clock, CheckCircle, XCircle, User, Calendar, Search, X, ClipboardList, Bell, Check } from 'lucide-react'
 
 interface RepoAssignment {
   id: string
@@ -56,7 +57,7 @@ export default function RepoAssignments({ repoName }: RepoAssignmentsProps) {
       setLoading(true)
       setError(null)
       
-      console.log(`🔍 Fetching assignments for repository: ${repoName}`)
+      console.log(`Fetching assignments for repository: ${repoName}`)
       
       const response = await fetch(`/api/assignments/repo/${repoName}`, {
         credentials: 'include'
@@ -66,12 +67,12 @@ export default function RepoAssignments({ repoName }: RepoAssignmentsProps) {
       
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({ error: 'Unknown error' }))
-        console.error(`❌ API Error: ${response.status}`, errorData)
+        console.error(`API Error: ${response.status}`, errorData)
         throw new Error(`API Error ${response.status}: ${errorData.error || response.statusText}`)
       }
       
       const data = await response.json()
-      console.log(`✅ API Success:`, { 
+      console.log(`API Success:`, { 
         repository: data.repository, 
         total: data.total, 
         assignmentsCount: data.assignments.length 
@@ -80,7 +81,7 @@ export default function RepoAssignments({ repoName }: RepoAssignmentsProps) {
       setAssignments(data.assignments)
       setStats(data.stats)
     } catch (err) {
-      console.error('❌ Error fetching repository assignments:', err)
+      console.error('Error fetching repository assignments:', err)
       setError(err instanceof Error ? err.message : 'Failed to fetch assignments')
     } finally {
       setLoading(false)
@@ -106,7 +107,7 @@ export default function RepoAssignments({ repoName }: RepoAssignmentsProps) {
       }
 
       const result = await response.json()
-      console.log(`✅ ${action} successful:`, result)
+      console.log(`${action} successful:`, result)
       
       // Refresh assignments
       await fetchAssignments()
@@ -137,15 +138,15 @@ export default function RepoAssignments({ repoName }: RepoAssignmentsProps) {
   const getUrgencyIcon = (urgency: string) => {
     switch (urgency) {
       case 'critical':
-        return '🚨'
+        return <AlertTriangle className="w-4 h-4" />
       case 'high':
-        return '⚠️'
+        return <AlertTriangle className="w-4 h-4" />
       case 'medium':
-        return '🔔'
+        return <Bell className="w-4 h-4" />
       case 'low':
-        return '✅'
+        return <Check className="w-4 h-4" />
       default:
-        return '📋'
+        return <ClipboardList className="w-4 h-4" />
     }
   }
 
@@ -153,9 +154,11 @@ export default function RepoAssignments({ repoName }: RepoAssignmentsProps) {
     return (
       <div className="bg-white dark:bg-gray-800 shadow-sm rounded-xl">
         <div className="px-5 pt-5">
-          <div className="flex items-center justify-center py-8">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600"></div>
-            <span className="ml-2 text-gray-500 dark:text-gray-400">Loading assignments...</span>
+          <div className="animate-pulse space-y-4">
+            <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-32"></div>
+            {[...Array(3)].map((_, i) => (
+              <div key={i} className="h-16 bg-gray-200 dark:bg-gray-700 rounded"></div>
+            ))}
           </div>
         </div>
       </div>
@@ -167,7 +170,7 @@ export default function RepoAssignments({ repoName }: RepoAssignmentsProps) {
       <div className="bg-white dark:bg-gray-800 shadow-sm rounded-xl">
         <div className="px-5 pt-5">
           <div className="text-center py-8">
-            <div className="text-red-600 dark:text-red-400 mb-2">❌ Error loading assignments</div>
+            <div className="text-red-600 dark:text-red-400 mb-2"><X className="w-4 h-4 inline mr-1" /> Error loading assignments</div>
             <p className="text-sm text-gray-500 dark:text-gray-400">{error}</p>
           </div>
         </div>
@@ -222,7 +225,7 @@ export default function RepoAssignments({ repoName }: RepoAssignmentsProps) {
       <div className="px-5 pb-5">
         {assignments.length === 0 ? (
           <div className="text-center py-8">
-            <div className="text-gray-400 dark:text-gray-500 mb-2">📋</div>
+            <div className="text-gray-400 dark:text-gray-500 mb-2"><ClipboardList className="w-8 h-8 mx-auto" /></div>
             <p className="text-sm text-gray-500 dark:text-gray-400">No assignments found for this repository</p>
           </div>
         ) : (

@@ -93,16 +93,18 @@ export default function DashboardCard02() {
             <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-16"></div>
           </div>
         </div>
-        <div className="grow max-sm:max-h-[128px] xl:max-h-[128px] flex items-center justify-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-sky-500"></div>
+        <div className="grow max-sm:max-h-[128px] xl:max-h-[128px]">
+          <div className="animate-pulse">
+            <div className="h-20 bg-gray-200 dark:bg-gray-700 rounded"></div>
+          </div>
         </div>
       </div>
     )
   }
 
   return(
-    <div className="flex flex-col col-span-full sm:col-span-6 xl:col-span-4 bg-white dark:bg-gray-800 shadow-sm rounded-xl">
-      <div className="px-5 pt-5">
+    <div className="flex flex-col col-span-full sm:col-span-6 xl:col-span-4 bg-white dark:bg-gray-800 shadow-sm rounded-xl h-[280px]">
+      <div className="px-5 pt-5 flex-shrink-0">
         <header className="flex justify-between items-start mb-2">
           <h2 className="text-lg font-semibold text-gray-800 dark:text-gray-100 mb-2">Repositories</h2>
           {/* Menu button */}
@@ -120,9 +122,10 @@ export default function DashboardCard02() {
         </div>
       </div>
       {/* Chart built with Chart.js 3 */}
-      <div className="grow max-sm:max-h-[128px] xl:max-h-[128px]">
-        {/* Change the height attribute to adjust the chart height */}
-        <LineChart01 data={chartData} width={389} height={128} />
+      <div className="flex-1 overflow-hidden">
+        <div className="h-full w-full">
+          <LineChart01 data={chartData} width={389} height={120} />
+        </div>
       </div>
     </div>
   )

@@ -173,52 +173,8 @@ export async function GET(request: NextRequest) {
       }))
     }
 
-    // Get commit count for each repository (last 30 days for dashboard)
-    try {
-      let totalCommits = 0
-      const since = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString() // Last 30 days
-      
-      console.log(`🔍 [DEBUG] Fetching commits for ${repos.length} repositories since ${since}`)
-      console.log(`🔍 [DEBUG] Using username: ${username}`)
-      
-      // Limit to first 20 repos to prevent excessive API calls
-      const reposToCheck = repos.slice(0, 20)
-      console.log(`🔍 [DEBUG] Checking commits for ${reposToCheck.length} repositories (limited for performance)`)
-      
-      // Get commits from limited repositories
-      for (const repo of reposToCheck) {
-        try {
-          // Only fetch first page to get approximate count
-          const commitsResponse = await fetch(
-            `https://api.github.com/repos/${repo.full_name}/commits?since=${since}&per_page=100&author=${username}`, 
-            {
-              headers: {
-                'Authorization': `Bearer ${user.accessToken}`,
-                'Accept': 'application/vnd.github.v3+json',
-                'User-Agent': 'GitHub-Dashboard'
-              }
-            }
-          )
-
-          if (commitsResponse.ok) {
-            const commitsData = await commitsResponse.json()
-            totalCommits += commitsData.length
-            console.log(`📊 [DEBUG] ${repo.full_name}: ${commitsData.length} commits`)
-          } else {
-            console.warn(`Failed to fetch commits from ${repo.full_name}:`, commitsResponse.status)
-          }
-        } catch (repoError) {
-          console.warn(`Failed to fetch commits from ${repo.full_name}:`, repoError)
-          // Continue with other repos
-        }
-      }
-      
-      console.log(`✅ [DEBUG] Total commits across ${reposToCheck.length} repos: ${totalCommits}`)
-      stats.totalCommits = totalCommits
-    } catch (error) {
-      console.log('Could not fetch contribution data:', error)
-      stats.totalCommits = 0
-    }
+    // Skip commit calculation to avoid API rate limits
+    stats.totalCommits = 0
 
     // Update cache
     cache = { data: stats, timestamp: Date.now() }

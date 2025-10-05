@@ -94,7 +94,7 @@ async function testGitHubToken() {
       console.log('🔑 Authentication failed - Invalid token');
       console.log('💡 Please check your GitHub token is correct');
     } else if (error.status === 403) {
-      console.log('🚫 Permission denied - Token lacks required permissions');
+      console.log('Permission denied - Token lacks required permissions');
       console.log('💡 Please ensure your token has "repo" and "issues" scopes');
     } else if (error.status === 404) {
       console.log('📂 Repository not found or no access');

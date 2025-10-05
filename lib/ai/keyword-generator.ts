@@ -4,11 +4,12 @@ import OpenAI from 'openai';
 let _openai: OpenAI | null = null;
 const getOpenAI = () => {
   if (!_openai) {
-    if (!process.env.OPEN_AI_KEY) {
-      throw new Error('OpenAI API key is required. Set OPEN_AI_KEY environment variable.');
+    const apiKey = process.env.OPEN_AI_KEY || process.env.OPENAI_API_KEY;
+    if (!apiKey) {
+      throw new Error('OpenAI API key is required. Set OPEN_AI_KEY or OPENAI_API_KEY environment variable.');
     }
     _openai = new OpenAI({
-      apiKey: process.env.OPEN_AI_KEY,
+      apiKey: apiKey,
     });
   }
   return _openai;

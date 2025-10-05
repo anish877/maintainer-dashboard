@@ -11,26 +11,26 @@ export async function GET(
   { params }: { params: Promise<{ repoName: string }> }
 ) {
   try {
-    console.log('🔍 Repository-specific assignments API called')
+    console.log('Repository-specific assignments API called')
     
     // Check authentication
     const session = await getServerSession(authOptions)
-    console.log('🔍 Session check:', { 
+    console.log('Session check:', { 
       hasSession: !!session, 
       userId: session?.user?.id,
       userEmail: session?.user?.email 
     })
     
     if (!session?.user?.id) {
-      console.log('❌ No session found, returning 401')
+      console.log('No session found, returning 401')
       return NextResponse.json({ error: 'Authentication required' }, { status: 401 })
     }
 
     const { repoName } = await params
-    console.log('🔍 Repository name:', repoName)
+    console.log('Repository name:', repoName)
 
     // Get user's GitHub access token
-    console.log('🔍 Fetching user from database:', { userId: session.user.id })
+    console.log('Fetching user from database:', { userId: session.user.id })
     
     let user
     try {
@@ -38,9 +38,9 @@ export async function GET(
         where: { id: session.user.id },
         select: { accessToken: true, username: true }
       })
-      console.log('🔍 User data:', { hasUser: !!user, hasAccessToken: !!user?.accessToken, username: user?.username })
+      console.log('User data:', { hasUser: !!user, hasAccessToken: !!user?.accessToken, username: user?.username })
     } catch (error) {
-      console.error('❌ Database error:', error)
+      console.error('Database error:', error)
       return NextResponse.json({ error: 'Database error' }, { status: 500 })
     }
 
@@ -58,7 +58,7 @@ export async function GET(
       ? repoName.split('/') 
       : [user.username || 'unknown', repoName]
 
-    console.log(`🔍 Fetching issues for ${owner}/${repo}`)
+    console.log(`Fetching issues for ${owner}/${repo}`)
 
     // Fetch all open issues with assignees
     let issues
@@ -70,14 +70,23 @@ export async function GET(
         per_page: 100
       })
       issues = response.data
-      console.log(`📋 Found ${issues.length} open issues`)
+      console.log(`Found ${issues.length} open issues`)
     } catch (error) {
-      console.error('❌ GitHub API error:', error)
+      console.error('GitHub API error:', error)
       return NextResponse.json({ 
         error: 'Failed to fetch issues from GitHub',
         details: error instanceof Error ? error.message : 'Unknown error'
       }, { status: 500 })
     }
+
+    // Debug: Log all issues and their assignee status
+    console.log(`Processing ${issues.length} issues:`)
+    issues.forEach((issue, index) => {
+      console.log(`  Issue #${issue.number}: "${issue.title}" - Assignees: ${issue.assignees?.length || 0}`)
+      if (issue.assignees && issue.assignees.length > 0) {
+        console.log(`    Assignees: ${issue.assignees.map(a => a.login).join(', ')}`)
+      }
+    })
 
     // Process issues to create assignments
     const repoAssignments = (await Promise.all(
@@ -130,7 +139,7 @@ export async function GET(
               const aiService = new AIAnalysisService()
               const combinedText = recentComments.join('\n\n')
               
-              console.log(`🤖 Analyzing comments for ${assignee.login} in issue #${issue.number}`)
+              console.log(`Analyzing comments for ${assignee.login} in issue #${issue.number}`)
               
               const analysis = await aiService.analyzeWorkProgress(combinedText)
               
@@ -142,7 +151,7 @@ export async function GET(
                 nextSteps: `Last comment: ${recentComments[recentComments.length - 1]?.substring(0, 100)}...`
               }
               
-              console.log(`✅ AI Analysis result:`, {
+              console.log(`AI Analysis result:`, {
                 isActive: aiAnalysis.isActive,
                 workType: aiAnalysis.workType,
                 confidence: Math.round(aiAnalysis.confidence * 100) + '%',
@@ -186,6 +195,8 @@ export async function GET(
         })
     )).filter(assignment => assignment !== null)
 
+    console.log(`Created ${repoAssignments.length} assignments from ${issues.length} issues`)
+
     // Apply automated status calculation to all assignments (TEST MODE: using minutes)
     const assignments = repoAssignments.map(assignment => {
       const now = new Date()
@@ -201,7 +212,7 @@ export async function GET(
           action: 'Consider removing',
           actionUrl: `https://github.com/${assignment.repositoryName}/issues/${assignment.issueNumber}`,
           urgency: 'critical',
-          message: `🚨 Critical: ${minutesSinceActivity} minutes of inactivity - Consider removing`
+          message: `Critical: ${minutesSinceActivity} minutes of inactivity - Consider removing`
         }
       } else if (minutesSinceActivity >= 5) {
         return {
@@ -211,7 +222,7 @@ export async function GET(
           action: 'Final warning sent',
           actionUrl: `https://github.com/${assignment.repositoryName}/issues/${assignment.issueNumber}`,
           urgency: 'high',
-          message: `⚠️ Alert: ${minutesSinceActivity} minutes inactive - Final warning sent`
+          message: `Alert: ${minutesSinceActivity} minutes inactive - Final warning sent`
         }
       } else if (minutesSinceActivity >= 3) {
         return {
@@ -221,7 +232,7 @@ export async function GET(
           action: 'Gentle reminder sent',
           actionUrl: `https://github.com/${assignment.repositoryName}/issues/${assignment.issueNumber}`,
           urgency: 'medium',
-          message: `🔔 Warning: ${minutesSinceActivity} minutes inactive - Reminder sent`
+          message: `Warning: ${minutesSinceActivity} minutes inactive - Reminder sent`
         }
       } else if (minutesSinceActivity >= 2) {
         return {
@@ -231,7 +242,7 @@ export async function GET(
           action: 'Active work',
           actionUrl: `https://github.com/${assignment.repositoryName}/issues/${assignment.issueNumber}`,
           urgency: 'low',
-          message: `✅ Active: Recent activity (${minutesSinceActivity} min ago)`
+          message: `Active: Recent activity (${minutesSinceActivity} min ago)`
         }
       } else {
         return {
@@ -273,7 +284,7 @@ export async function GET(
     })
 
   } catch (error) {
-    console.error('❌ Error fetching repository assignments:', error)
+    console.error('Error fetching repository assignments:', error)
     return NextResponse.json(
       { error: 'Failed to fetch repository assignments' }, 
       { status: 500 }
@@ -325,7 +336,7 @@ export async function POST(
     switch (action) {
       case 'remove_from_issue':
         try {
-          console.log(`🚨 Removing assignee from issue #${issueNumber} in ${owner}/${repo}`)
+          console.log(`Removing assignee from issue #${issueNumber} in ${owner}/${repo}`)
           
           // Get current assignees
           const { data: issue } = await octokit.rest.issues.get({
@@ -348,7 +359,7 @@ export async function POST(
               owner,
               repo,
               issue_number: issueNumber,
-              body: `🔔 **Automated Assignment Management**\n\nThis issue has been automatically unassigned due to inactivity. Please reassign if work is still needed.`
+              body: `**Automated Assignment Management**\n\nThis issue has been automatically unassigned due to inactivity. Please reassign if work is still needed.`
             })
           }
 
@@ -379,14 +390,14 @@ export async function POST(
             issue_number: issueNumber
           })
           
-          console.log(`✅ Issue found: ${issue.title}`)
+          console.log(`Issue found: ${issue.title}`)
           
           // Add a reminder comment
           await octokit.rest.issues.createComment({
             owner,
             repo,
             issue_number: issueNumber,
-            body: `🔔 **Friendly Reminder**\n\nThis issue has been assigned for a while. Please provide an update on your progress or let us know if you need help!`
+            body: `**Friendly Reminder**\n\nThis issue has been assigned for a while. Please provide an update on your progress or let us know if you need help!`
           })
 
           return NextResponse.json({ 
@@ -418,7 +429,7 @@ export async function POST(
         }
         
       case 'mark_active':
-        console.log(`✅ Marked assignment ${assignmentId} as ACTIVE in ${repoName}`)
+        console.log(`Marked assignment ${assignmentId} as ACTIVE in ${repoName}`)
         return NextResponse.json({ 
           success: true, 
           message: `Assignment marked as active`,
@@ -428,7 +439,7 @@ export async function POST(
         
       case 'extend_deadline':
         const days = data?.days || 30
-        console.log(`✅ Extended deadline for assignment ${assignmentId} by ${days} days in ${repoName}`)
+        console.log(`Extended deadline for assignment ${assignmentId} by ${days} days in ${repoName}`)
         return NextResponse.json({ 
           success: true, 
           message: `Deadline extended by ${days} days`,
@@ -437,7 +448,7 @@ export async function POST(
         })
         
       case 'whitelist':
-        console.log(`✅ Whitelisted assignment ${assignmentId} in ${repoName}`)
+        console.log(`Whitelisted assignment ${assignmentId} in ${repoName}`)
         return NextResponse.json({ 
           success: true, 
           message: `Assignment whitelisted`,
