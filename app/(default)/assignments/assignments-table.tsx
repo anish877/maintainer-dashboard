@@ -157,6 +157,9 @@ export default function AssignmentsTable({ assignments, onAssignmentAction }: As
                   onAssignmentAction={onAssignmentAction}
                   getStatusColor={getStatusColor}
                   getWorkTypeColor={getWorkTypeColor}
+                  onStatusUpdate={(assignmentId, newStatus) => {
+                    console.log(`Status updated for ${assignmentId}: ${newStatus}`)
+                  }}
                 />
               ))}
             </tbody>
